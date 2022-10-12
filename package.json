@@ -1,0 +1,23 @@
+{
+  "name": "integrador-cuenti-tienddi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/juandaviddavila/integrador-cuenti-tienddi.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/juandaviddavila/integrador-cuenti-tienddi/issues"
+  },
+  "homepage": "https://github.com/juandaviddavila/integrador-cuenti-tienddi#readme",
+  "dependencies": {
+    "utilities_cuenti": "latest"
+  }
+}
