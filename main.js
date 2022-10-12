@@ -8,7 +8,7 @@ const autenticacion = require('./src/autenticacion/index');
 envVars.config();
 //https://docs.google.com/document/d/1aaNSHuCdT65Regw8zHaJSSm7PKDnH4pmHJ4xyFSycJI/edit
 /* Import External libraries */
-//AKIA4WBEEV6W4JA7J35H  9d37McuKXQgoGdp5cLsh0vuhF2YEEjWVogfx87yN
+
 const express = require('express');
 const cors = require('cors');
 const app = express();
