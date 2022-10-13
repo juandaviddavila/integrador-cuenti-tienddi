@@ -4,33 +4,21 @@
 
 /* This should be on top because can break the imports made before the config */
 const envVars = require('dotenv');
-const autenticacion = require('./src/autenticacion/index');
 envVars.config();
-//https://docs.google.com/document/d/1aaNSHuCdT65Regw8zHaJSSm7PKDnH4pmHJ4xyFSycJI/edit
-/* Import External libraries */
-
 const express = require('express');
 const cors = require('cors');
 const app = express();
-var jwt = require('jsonwebtoken');
-const { Base64 } = require('js-base64');
 //ul base
 const baseUrl = '/api/v1';
 global.baseUrl = baseUrl;
-
-
-
+global.normalizedPath = require("path").join(__dirname, "src");
 //app.use(formidable());
 app.use(cors());
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.json({ limit: '50mb' }));
-app.listen(process.env.puerto, () => {
-    console.log('Servidor iniciado en el puerto ' + process.env.puerto);
+app.listen(process.env.port, () => {
+    console.log('Servidor iniciado en el puerto ' + process.env.port);
 });
-
-
-// Importamos middleware
-const middleware_liviano = autenticacion.middleware_liviano;
 
 // ruta de inicio
 app.get(baseUrl + '/', function (req, res) {

@@ -1,0 +1,2 @@
+select nombre_sucursal,vender_con_impuestos,vender_impuestos_agregado,activar_venta_compra_licores,vender_ip_estampilla 
+ from adm_sucursal where id_sucursal=:id_sucursal;

@@ -1,1 +1,0 @@
-select * from adm_consecutivos where es_factura_electronica=:es_factura_electronica;

@@ -20,7 +20,7 @@ var gestorSQL = function () {
     };
     j4.generarJsonBase = async function () {
         lstSql = [];
-        let ruta = process.cwd() + '/sql_json/';
+        let ruta = process.cwd() + '/SQL/';
         let carpetas = await getFilesInFolder(ruta, true)
        // console.log(carpetas);  // lista de moduelos
         for (let i = 0; i < carpetas.length; i++) {

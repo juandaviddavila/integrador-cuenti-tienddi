@@ -1,0 +1,2 @@
+SELECT id_categoria,nombre_categoria,es_activo,id_imagen,es_visible_tienda,mostrar_tienda_linea,id_categoria_padre,metadata,alias,mostrar_catalogo_linea 
+ FROM inv_categoria;

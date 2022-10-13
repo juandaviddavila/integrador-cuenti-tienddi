@@ -23,15 +23,28 @@ var gestorBd = function () {
         return conn;
     };
 
-   let iniciarPoolBase = function () {
-        j4.pool_bases = mariadb.createPool({
-            host: process.env.dbHost,
-            user: process.env.dbUser,
-            password: process.env.dbPwd,
-            database: process.env.database,
-            connectionLimit: process.env.poolSize,
-            port: process.env.portDb
-        });
+    let iniciarPoolBase = function () {
+        if (process.env.environment_data_base === 'dev') {
+            console.log("Inicia pool en entrono de desarrollo");
+            j4.pool_bases = mariadb.createPool({
+                host: process.env.dbHost_dev,
+                user: process.env.dbUser_dev,
+                password: process.env.dbPwd_dev,
+                database: process.env.database_dev,
+                connectionLimit: parseInt(process.env.poolSizeBase_dev),
+                port: process.env.portDb_dev
+            });
+        }else{
+            console.log("Inicia pool en entrono de producción");
+            j4.pool_bases = mariadb.createPool({
+                host: process.env.dbHost_pro,
+                user: process.env.dbUser_pro,
+                password:process.env.dbPwd_pro,
+                database: process.env.database_pro,
+                connectionLimit: parseInt(process.env.poolSizeBase_pro),
+                port: process.env.portDb_pro
+            });
+        }
         j4.pool_bases.on('connection', (conn) => console.log(`connection ${conn.threadId} has been created in pool`));
         j4.pool_bases.on('release', (conn) => console.log(`release ${conn.threadId} has been created in pool`));
     };
@@ -66,7 +79,7 @@ var gestorBd = function () {
     };
 
     j4.getConnectionEmpresa = async function (id_empresa, _idAplicacion) {
-        let idAplicacion = parseInt(process.env.idAplicacion);
+        let idAplicacion = parseInt(process.env.id_application);
         let indiceServer = -1;
         let indiceEmpresa = -1;
         for (let i = 0; i < listaServer.length; i++) {
@@ -74,7 +87,7 @@ var gestorBd = function () {
                 if (listaServer[i].lstEmpresas[j].id_empresa == id_empresa) {
                     indiceServer = i;
                     indiceEmpresa = j;
-                    break
+                    break;
                 }
             }
         }
@@ -97,8 +110,9 @@ var gestorBd = function () {
                 return await j4.getConnectionEmpresa(id_empresa, idAplicacion);
             } else {
                 //registrar server
-                if (process.env.entorno == 'dev') {
-                    objServer.maxActive = process.env.limitePoolDev
+                objServer.maxActive = parseInt(process.env.poolSizeBase_dev);
+                if(process.env.environment_data_base==='pro'){
+                    objServer.maxActive = parseInt(process.env.poolSizeBase_pro);
                 }
                 var pool = mariadb.createPool({
                     host: objServer.ip,
@@ -106,7 +120,7 @@ var gestorBd = function () {
                     password: objServer.clave,
                     connectionLimit: objServer.maxActive,
                     port: objServer.puerto,
-                    acquireTimeout:1000*60
+                    acquireTimeout: 1000 * 60
                 });
                 j4.pool_bases.on('connection', (conn) => console.log(`connection ${conn.threadId} has been created in pool idserver ${objServer.id_servidor}`));
                 j4.pool_bases.on('release', (conn) => console.log(`release ${conn.threadId} has been created in pool idserver ${objServer.id_servidor}`));

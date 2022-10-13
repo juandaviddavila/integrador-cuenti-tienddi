@@ -1,15 +1,11 @@
 let app= require('../../main.js');
 
-const autenticacion = require('../../src/autenticacion/index');
-const middleware = autenticacion.middleware_liviano;
+//iniciar conexion a la base de datos
+ require('../helpers/gestorBd');
+ const gestorSQL =  require('../helpers/gestorSQL');
+// Importamos todas las rutas
 
-//iniarconexion a la base de datos
- require('../config/gestorBd');
- const gestorSQL =  require('../config/gestorSQL');
-
-
-// Importamos las rutas de modulos
-// Importamos ruta de autenticacion
-app.use(global.baseUrl, autenticacion.autenticar);//manejo de ruta de seguridad
-
-app.use(global.baseUrl+'/integracion',middleware, require('../../src/controllers/integracion_erpControllers'));
+require("fs").readdirSync(global.normalizedPath+'/routes').forEach(function(file) {
+  //  require('../../src/routes/integrator-tienddi-router')
+  require("../../src/routes/" + file);
+});
