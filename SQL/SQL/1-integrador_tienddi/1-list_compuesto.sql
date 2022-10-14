@@ -1,0 +1,1 @@
+SELECT c.id,c.id_producto,c.id_producto_compuesto,c.unidades FROM inv_configuracion_compuesto c WHERE c.id_producto_compuesto=:id_producto AND c.es_activo=1;
