@@ -353,6 +353,11 @@ $.generate_product = async function (id_company, data, row, rows_categoria, rows
         total_price: total_price,//precio total con impuestos +estampilla+ impuestos al consumo departamental
         purchase_price: row.precio_compra,
         cost: row.costo,
+        stock_min:row.stock_minino,
+        stock_max:row.stock_maximo,
+        warehouse_location:row.ubicacion,//ubicacion de la bodega
+        is_active:row.es_activo==1?true:false,//si esta activo
+        online_store:row.mostrar_tienda_linea==1?true:false,//si se puede vender en tienda online
         tax: {
             tax: row.valor_impuesto,//porcentaje de impuestos
             name_tax: row.nombre_impuesto,//name tax

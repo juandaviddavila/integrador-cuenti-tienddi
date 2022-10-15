@@ -3,7 +3,8 @@ SELECT p.id_producto,p.sku,p.codigo_barras,p.nombre,ps.precio_venta,ps.precio_ve
  p.es_servicio,p.vende_sin_existencia,p.id_marca,i.tipo_impuesto,p.id_categoria,ps.id_impuesto,
 i.valor_impuesto,p.id_tipo_medida,p.id_imagen,p.invima,p.cum,
 p.nota,m.nombre_marca,u.nombre AS unidad_medida,i.nombre_impuesto,c.nombre_categoria,prov.nombre_cliente AS nombre_proveedor
-,prov.identificacion AS identificacion_proveedor,i.clasificacion_tributaria,p.id_tipo_producto,ps.precio_compra,ps.costo
+,prov.identificacion AS identificacion_proveedor,i.clasificacion_tributaria,p.id_tipo_producto,ps.precio_compra,ps.costo,ps.stock_minino,
+ps.stock_maximo,ps.ubicacion,ps.es_activo,p.mostrar_tienda_linea
  FROM inv_producto p INNER JOIN inv_producto_sucursal ps
  ON(p.id_producto=ps.id_producto) 
  INNER JOIN inv_categoria c ON(c.id_categoria=p.id_categoria)
