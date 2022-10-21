@@ -166,7 +166,7 @@ $.get_data_product_id = async (id_company, data, id_producto, rows_sucursal, row
     let _data = fileManager.copyObject(data);
     _data.imagen_base64 = false;
     for (const row of rows) {
-        lst.push(await $.generate_product(id_company, data, row, rows_categoria, rows_sucursal, rows_imagen,true));
+        lst.push(await $.generate_product(id_company, data, row, rows_categoria, rows_sucursal, rows_imagen, true));
     }
     return lst;
 };
@@ -216,7 +216,11 @@ $.get_data_products = async (id_company, data) => {
     rows_sucursal.vender_ip_estampilla = parseInt(rows_sucursal.vender_ip_estampilla);
     let lst = [];
     for (const row of rows) {
-        lst.push(await $.generate_product(id_company, data, row, rows_categoria, rows_sucursal, rows_imagen));
+        if (row.nombre !== null) {
+            if (row.nombre.length > 3) {
+                lst.push(await $.generate_product(id_company, data, row, rows_categoria, rows_sucursal, rows_imagen));
+            }
+        }
     }
     return lst;
 };
@@ -353,11 +357,11 @@ $.generate_product = async function (id_company, data, row, rows_categoria, rows
         total_price: total_price,//precio total con impuestos +estampilla+ impuestos al consumo departamental
         purchase_price: row.precio_compra,
         cost: row.costo,
-        stock_min:row.stock_minino,
-        stock_max:row.stock_maximo,
-        warehouse_location:row.ubicacion,//ubicacion de la bodega
-        is_active:row.es_activo==1?true:false,//si esta activo
-        online_store:row.mostrar_tienda_linea==1?true:false,//si se puede vender en tienda online
+        stock_min: row.stock_minino,
+        stock_max: row.stock_maximo,
+        warehouse_location: row.ubicacion,//ubicacion de la bodega
+        is_active: row.es_activo == 1 ? true : false,//si esta activo
+        online_store: row.mostrar_tienda_linea == 1 ? true : false,//si se puede vender en tienda online
         tax: {
             tax: row.valor_impuesto,//porcentaje de impuestos
             name_tax: row.nombre_impuesto,//name tax
@@ -396,7 +400,7 @@ $.generate_product = async function (id_company, data, row, rows_categoria, rows
         } else {
             row.configuracion_dinamica = JSON.parse(row.configuracion_dinamica);
             obj.configuration_compound = [];
-            obj.configuration_compound_dynamic=[];
+            obj.configuration_compound_dynamic = [];
             for (const conf of row.configuracion_dinamica) {
                 let modelo = {
                     title: conf.titulo,
@@ -420,7 +424,7 @@ $.generate_product = async function (id_company, data, row, rows_categoria, rows
                 obj.configuration_compound_dynamic.push(modelo);
             }
             //sacar ingredientes
-            obj.configuration_compound=  await $.get_data_compound  (id_company, data, row.id_producto, rows_sucursal, rows_categoria, rows_imagen);
+            obj.configuration_compound = await $.get_data_compound(id_company, data, row.id_producto, rows_sucursal, rows_categoria, rows_imagen);
         }
     }
     //falta ingredientes en compuestos para validar inventario
