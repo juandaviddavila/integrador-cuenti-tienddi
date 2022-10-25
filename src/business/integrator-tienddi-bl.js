@@ -346,10 +346,13 @@ $.generate_product = async function (id_company, data, row, rows_categoria, rows
         row.presentaciones = null;
         row.configuracion_dinamica = null;
     }
+    row.sku= row.sku===null?row.id_producto:row.id_producto;
+    row.sku= row.sku.toString().trim();
+    row.sku= row.sku===''?row.id_producto:row.id_producto;
     let obj = {
         id_product: row.id_producto,//id de producto
         name: row.nombre,//nombre producto
-        sku: row.sku,
+        sku: row.sku.toString(),
         barcode: row.codigo_barras,
         stock: row.existencias,//existencias
         brand: row.nombre_marca,//marca
@@ -397,7 +400,11 @@ $.generate_product = async function (id_company, data, row, rows_categoria, rows
     if (obj.product_type === 'COMPOUND') {
         if (row.configuracion_dinamica === null) {
             obj.product_type = 'STANDARD';
+            //sacar ingredientes
+          //  obj.configuration_compound = await $.get_data_compound(id_company, data, row.id_producto, rows_sucursal, rows_categoria, rows_imagen);
         } else {
+            //configuration_compound ejemplo
+
             row.configuracion_dinamica = JSON.parse(row.configuracion_dinamica);
             obj.configuration_compound = [];
             obj.configuration_compound_dynamic = [];
@@ -405,7 +412,7 @@ $.generate_product = async function (id_company, data, row, rows_categoria, rows
                 let modelo = {
                     title: conf.titulo,
                     multiple_choices: conf.permitirMarcarMultiplesOpciones == 1 ? true : false,//permitirMarcarMultiplesOpciones aplica solo si type es opcion_multiple, este permite que cada opcion se puede seleccionar mas cantidades
-                    quantity_options: conf.cantidad_opciones,//cantidad_opciones
+                    maximum_options: conf.cantidad_opciones,//cantidad_opciones
                     minimum_options: conf.cantidad_opciones_minima,//cantidad_opciones_minima
                     order: conf.orden,//orden que se muestra las opciones
                     type: conf.tipo === 'opcion' ? 'option' : 'option_multiple',/*lista de opciones opcion(option)/opcion_multiple(option_multiple)*/
