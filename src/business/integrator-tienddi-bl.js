@@ -146,8 +146,10 @@ $.get_data_product_id = async (id_company, data, id_producto, rows_sucursal, row
         conn = await objGestorBd.getConnectionEmpresa(id_company);
         let SQL = objGestorSQL.getSqlNombre("integrador_tienddi", "list_product_tienddi");
         SQL = SQL.replace('{{adicional}}', 'AND p.id_producto=' + id_producto);
-        SQL = SQL.replace('and p.id_producto=21', '');
+        SQL = SQL.replace('and p.id_producto=881', '');
+        SQL = SQL.replace('es_ingrediente=0 AND', '');
         rows = await conn.query2(SQL, { id_sucursal: data.id_branch, desde: 0, hasta: 1 });
+        console.log(1);
     } catch (error) {
         console.error(error);
         errorBd = true;
