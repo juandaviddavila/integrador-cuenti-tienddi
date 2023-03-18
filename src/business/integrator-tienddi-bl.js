@@ -7,6 +7,57 @@ const axios = require('axios');
 const fileManager = require('utilities_cuenti/vendor/fileManager');
 let $ = {};
 
+let redondeo = function (numero, decimales){
+    var flotante = parseFloat(numero);
+    var resultado = Math.round(flotante * Math.pow(10, decimales)) / Math.pow(10, decimales);
+    return resultado;
+};
+
+let redondearDecimalesEspecial= function (numero, decimales) {
+    numeroRegexp = new RegExp('\\d\\.(\\d){' + decimales + ',}');   // Expresion regular para numeros con un cierto numero de decimales o mas
+    if (numeroRegexp.test(numero)) {         // Ya que el numero tiene el numero de decimales requeridos o mas, se realiza el redondeo
+        return Number(numero.toFixed(decimales));
+    } else {
+        return Number(numero.toFixed(decimales)) === 0 ? 0 : numero;  // En valores muy bajos, se comprueba si el numero es 0 (con el redondeo deseado), si no lo es se devuelve el numero otra vez.
+    }
+};
+let RoundHalfDown=function (num) {
+    return -Math.round(-num);
+}
+let reondeoCentimos = function (valor, digitos, es_decimal, cantidad_decimales) {
+    if (!es_decimal) {
+        let e = Math.pow(10, digitos);
+        let v = valor / e;
+        let v1 = RoundHalfDown(v);
+        let r= v1 * e;
+        r=parseFloat(r);
+        if(isNaN(r)){
+            r=0;
+        }
+        return r;
+    } else {
+        //preferiblemente  cantidad_decimales=2 y digitos=1
+        let parte_decimal = valor % 1;
+        parte_decimal = Math.round(parseFloat(parte_decimal) * Math.pow(10, cantidad_decimales));
+        if (parte_decimal === 0) {
+            return reondeoCentimos(valor, digitos, false, cantidad_decimales);
+        }
+        let e = Math.pow(10, digitos);
+        let v = parte_decimal / e;
+        let v1 = RoundHalfDown(v);
+        v1 = v1 * e;
+        let v2 = parseFloat(Math.trunc(valor) + "." + v1.toString());
+        let r= v2;
+        r=parseFloat(r);
+        if(isNaN(r)){
+            r=0;
+        }
+        return r;
+    }
+};
+let ajusteDinero=function(valor){
+   return reondeoCentimos(valor,0,false,0);
+};
 $.get_imagen_base64 = async function (url) {
     console.log(url);
     console.log("inicio get_imagen_base64");
@@ -130,7 +181,7 @@ $.get_data_compound = async (id_company, data, id_producto, rows_sucursal, rows_
         let product = await $.get_data_product_id(id_company, data, row.id_producto, rows_sucursal, rows_categoria, rows_imagen);
         lst.push({
             product: product,
-            quantity: row.unidades,
+            quantity:redondeo(parseFloat(row.unidades),2)<0?0:redondeo(parseFloat(row.unidades),2),//validar
             id_product: row.id_producto,
             id_product_compound: row.id_producto_compuesto
         });
@@ -356,23 +407,23 @@ $.generate_product = async function (id_company, data, row, rows_categoria, rows
         name: row.nombre,//nombre producto
         sku: row.sku.toString(),
         barcode: row.codigo_barras,
-        stock: row.existencias,//existencias
+        stock:redondeo(parseFloat( row.existencias),2)<0?0:redondeo(parseFloat( row.existencias),2),//existencias validar
         brand: row.nombre_marca,//marca
-        unit_price: row.precio_venta_online,//precio unitario sin impuestos
-        total_price: total_price,//precio total con impuestos +estampilla+ impuestos al consumo departamental
-        purchase_price: row.precio_compra,
-        cost: row.costo,
-        stock_min: row.stock_minino,
-        stock_max: row.stock_maximo,
+        unit_price: parseFloat(row.precio_venta_online),//precio unitario sin impuestos
+        total_price: ajusteDinero(parseFloat(total_price)),//precio total con impuestos +estampilla+ impuestos al consumo departamental validar
+        purchase_price: ajusteDinero(parseFloat(row.precio_compra)),
+        cost: parseFloat(row.costo),
+        stock_min: parseFloat(row.stock_minino),
+        stock_max: parseFloat(row.stock_maximo),
         warehouse_location: row.ubicacion,//ubicacion de la bodega
         is_active: row.es_activo == 1 ? true : false,//si esta activo
         online_store: row.mostrar_tienda_linea == 1 ? true : false,//si se puede vender en tienda online
         tax: {
-            tax: row.valor_impuesto,//porcentaje de impuestos
-            name_tax: row.nombre_impuesto,//name tax
-            tax_value: total_impuestos_tax,//valor total de impuestos segun tax
-            departmental_consumption_tax: row.total_impoconsumo,//valor de impuestos de licores
-            stamp_tax: row.total_estampilla,//valor de impuesto de estanpillas
+            tax: parseFloat(row.valor_impuesto),//porcentaje de impuestos
+            name_tax: parseFloat(row.nombre_impuesto),//name tax
+            tax_value: parseFloat(total_impuestos_tax),//valor total de impuestos segun tax
+            departmental_consumption_tax: parseFloat(row.total_impoconsumo),//valor de impuestos de licores
+            stamp_tax: parseFloat(row.total_estampilla),//valor de impuesto de estanpillas
             tax_type: tax_type, //naturaleza del impuesto 1=IMPUESTO/IVA(TAX_STANDARD),3=ICO/IMPOCONSUMO(ICO),2=VALOR/BOLSA (VALUE)     
             tax_classification: tax_classification,//clasificacion tributaria 1=Gravado(taxed),3=Exento(Exempt),2=Excluido (excluded)     
         },
@@ -414,8 +465,8 @@ $.generate_product = async function (id_company, data, row, rows_categoria, rows
                 let modelo = {
                     title: conf.titulo,
                     multiple_choices: conf.permitirMarcarMultiplesOpciones == 1 ? true : false,//permitirMarcarMultiplesOpciones aplica solo si type es opcion_multiple, este permite que cada opcion se puede seleccionar mas cantidades
-                    maximum_options: conf.cantidad_opciones,//cantidad_opciones
-                    minimum_options: conf.cantidad_opciones_minima,//cantidad_opciones_minima
+                    maximum_options:parseInt(conf.cantidad_opciones),//cantidad_opciones
+                    minimum_options: parseInt(conf.cantidad_opciones_minima),//cantidad_opciones_minima
                     order: conf.orden,//orden que se muestra las opciones
                     type: conf.tipo === 'opcion' ? 'option' : 'option_multiple',/*lista de opciones opcion(option)/opcion_multiple(option_multiple)*/
                     options: []
@@ -424,9 +475,9 @@ $.generate_product = async function (id_company, data, row, rows_categoria, rows
                     let product = await $.get_data_product_id(id_company, data, opcion.id_producto, rows_sucursal, rows_categoria, rows_imagen);
                     modelo.options.push({
                         product: product[0],//traer detalle del producto
-                        price: opcion.precio,//precio adicional si la selecciona
+                        price: ajusteDinero(parseFloat(opcion.precio)),//precio adicional si la selecciona validar
                         id_product: opcion.id_producto,
-                        quantity: opcion.cantidad,//cantidad de item que saca del inventario
+                        quantity:redondeo( parseFloat(opcion.cantidad),2)<0?0:redondeo( parseFloat(opcion.cantidad),2),//cantidad de item que saca del inventario validar
                         alias: opcion.alias === undefined ? '' : opcion.alias//nombre alterno a mostrar si esta asignado muestro este y no el nombre del item
                     });
                 }
