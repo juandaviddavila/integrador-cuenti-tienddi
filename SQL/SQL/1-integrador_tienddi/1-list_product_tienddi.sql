@@ -13,7 +13,7 @@ INNER JOIN inv_marca m ON(m.id_marca=p.id_marca)
 INNER JOIN adm_unidad_medida u ON(u.id=p.id_tipo_medida)
 LEFT JOIN adm_imagenes img ON(p.id_imagen=img.id_imagen)  
 LEFT JOIN adm_cliente prov ON(prov.id_cliente=ps.id_proveedor)
- WHERE  es_ingrediente=0 AND ps.es_activo=1 AND p.mostrar_tienda_linea=1 AND p.id_padre IS NULL AND ps.id_sucursal=:id_sucursal 
+ WHERE es_ingrediente=0 AND ps.es_activo=1 AND p.mostrar_tienda_linea=1 AND p.id_padre IS NULL AND ps.id_sucursal=:id_sucursal 
  /*and p.id_producto=21*/
-  {{adicional}} ORDER BY p.id_producto LIMIT :desde,:hasta;
+  {{adicional}} LIMIT :desde,:total;
 

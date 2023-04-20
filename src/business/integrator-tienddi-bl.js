@@ -7,13 +7,13 @@ const axios = require('axios');
 const fileManager = require('utilities_cuenti/vendor/fileManager');
 let $ = {};
 
-let redondeo = function (numero, decimales){
+let redondeo = function (numero, decimales) {
     var flotante = parseFloat(numero);
     var resultado = Math.round(flotante * Math.pow(10, decimales)) / Math.pow(10, decimales);
     return resultado;
 };
 
-let redondearDecimalesEspecial= function (numero, decimales) {
+let redondearDecimalesEspecial = function (numero, decimales) {
     numeroRegexp = new RegExp('\\d\\.(\\d){' + decimales + ',}');   // Expresion regular para numeros con un cierto numero de decimales o mas
     if (numeroRegexp.test(numero)) {         // Ya que el numero tiene el numero de decimales requeridos o mas, se realiza el redondeo
         return Number(numero.toFixed(decimales));
@@ -21,7 +21,7 @@ let redondearDecimalesEspecial= function (numero, decimales) {
         return Number(numero.toFixed(decimales)) === 0 ? 0 : numero;  // En valores muy bajos, se comprueba si el numero es 0 (con el redondeo deseado), si no lo es se devuelve el numero otra vez.
     }
 };
-let RoundHalfDown=function (num) {
+let RoundHalfDown = function (num) {
     return -Math.round(-num);
 }
 let reondeoCentimos = function (valor, digitos, es_decimal, cantidad_decimales) {
@@ -29,10 +29,10 @@ let reondeoCentimos = function (valor, digitos, es_decimal, cantidad_decimales) 
         let e = Math.pow(10, digitos);
         let v = valor / e;
         let v1 = RoundHalfDown(v);
-        let r= v1 * e;
-        r=parseFloat(r);
-        if(isNaN(r)){
-            r=0;
+        let r = v1 * e;
+        r = parseFloat(r);
+        if (isNaN(r)) {
+            r = 0;
         }
         return r;
     } else {
@@ -47,16 +47,16 @@ let reondeoCentimos = function (valor, digitos, es_decimal, cantidad_decimales) 
         let v1 = RoundHalfDown(v);
         v1 = v1 * e;
         let v2 = parseFloat(Math.trunc(valor) + "." + v1.toString());
-        let r= v2;
-        r=parseFloat(r);
-        if(isNaN(r)){
-            r=0;
+        let r = v2;
+        r = parseFloat(r);
+        if (isNaN(r)) {
+            r = 0;
         }
         return r;
     }
 };
-let ajusteDinero=function(valor){
-   return reondeoCentimos(valor,0,false,0);
+let ajusteDinero = function (valor) {
+    return reondeoCentimos(valor, 0, false, 0);
 };
 $.get_imagen_base64 = async function (url) {
     console.log(url);
@@ -181,7 +181,7 @@ $.get_data_compound = async (id_company, data, id_producto, rows_sucursal, rows_
         let product = await $.get_data_product_id(id_company, data, row.id_producto, rows_sucursal, rows_categoria, rows_imagen);
         lst.push({
             product: product,
-            quantity:redondeo(parseFloat(row.unidades),2)<0?0:redondeo(parseFloat(row.unidades),2),//validar
+            quantity: redondeo(parseFloat(row.unidades), 2) < 0 ? 0 : redondeo(parseFloat(row.unidades), 2),//validar
             id_product: row.id_producto,
             id_product_compound: row.id_producto_compuesto
         });
@@ -199,6 +199,7 @@ $.get_data_product_id = async (id_company, data, id_producto, rows_sucursal, row
         SQL = SQL.replace('{{adicional}}', 'AND p.id_producto=' + id_producto);
         SQL = SQL.replace('and p.id_producto=881', '');
         SQL = SQL.replace('es_ingrediente=0 AND', '');
+        SQL = SQL.replace('LIMIT :desde,:total', '');
         rows = await conn.query2(SQL, { id_sucursal: data.id_branch, desde: 0, hasta: 1 });
         console.log(1);
     } catch (error) {
@@ -238,7 +239,18 @@ $.get_data_products = async (id_company, data) => {
 
         let SQL = objGestorSQL.getSqlNombre("integrador_tienddi", "list_product_tienddi");
         SQL = SQL.replace('{{adicional}}', '');
-        rows = await conn.query2(SQL, { id_sucursal: data.id_branch, desde: data.from, hasta: data.limit });
+        //paginacion
+        let desde_paginacion = 0;
+        let total_paginacion = 500;
+        if (data.pagina > -1) {
+            //validar pagina
+            if (data.pagina == 0) {
+                desde_paginacion = 0;
+            } else {
+                desde_paginacion = data.pagina * total_paginacion;
+            }
+        }
+        rows = await conn.query2(SQL, { id_sucursal: data.id_branch, desde:desde_paginacion, total: total_paginacion });
 
         let SQlCategoria = objGestorSQL.getSqlNombre("integrador_tienddi", "list_categorias");
         rows_categoria = await conn.query2(SQlCategoria, {});
@@ -270,8 +282,10 @@ $.get_data_products = async (id_company, data) => {
     let lst = [];
     for (const row of rows) {
         if (row.nombre !== null) {
-            if (row.nombre.length > 3) {
+            if (row.nombre.length >3) {
                 lst.push(await $.generate_product(id_company, data, row, rows_categoria, rows_sucursal, rows_imagen));
+            }else{
+                console.log(1);
             }
         }
     }
@@ -399,15 +413,15 @@ $.generate_product = async function (id_company, data, row, rows_categoria, rows
         row.presentaciones = null;
         row.configuracion_dinamica = null;
     }
-    row.sku= row.sku===null?row.id_producto:row.id_producto;
-    row.sku= row.sku.toString().trim();
-    row.sku= row.sku===''?row.id_producto:row.id_producto;
+    row.sku = row.sku === null ? row.id_producto : row.id_producto;
+    row.sku = row.sku.toString().trim();
+    row.sku = row.sku === '' ? row.id_producto : row.id_producto;
     let obj = {
         id_product: row.id_producto,//id de producto
         name: row.nombre,//nombre producto
         sku: row.sku.toString(),
         barcode: row.codigo_barras,
-        stock:redondeo(parseFloat( row.existencias),2)<0?0:redondeo(parseFloat( row.existencias),2),//existencias validar
+        stock: redondeo(parseFloat(row.existencias), 2) < 0 ? 0 : redondeo(parseFloat(row.existencias), 2),//existencias validar
         brand: row.nombre_marca,//marca
         unit_price: parseFloat(row.precio_venta_online),//precio unitario sin impuestos
         total_price: ajusteDinero(parseFloat(total_price)),//precio total con impuestos +estampilla+ impuestos al consumo departamental validar
@@ -454,7 +468,7 @@ $.generate_product = async function (id_company, data, row, rows_categoria, rows
         if (row.configuracion_dinamica === null) {
             obj.product_type = 'STANDARD';
             //sacar ingredientes
-          //  obj.configuration_compound = await $.get_data_compound(id_company, data, row.id_producto, rows_sucursal, rows_categoria, rows_imagen);
+            //  obj.configuration_compound = await $.get_data_compound(id_company, data, row.id_producto, rows_sucursal, rows_categoria, rows_imagen);
         } else {
             //configuration_compound ejemplo
 
@@ -465,7 +479,7 @@ $.generate_product = async function (id_company, data, row, rows_categoria, rows
                 let modelo = {
                     title: conf.titulo,
                     multiple_choices: conf.permitirMarcarMultiplesOpciones == 1 ? true : false,//permitirMarcarMultiplesOpciones aplica solo si type es opcion_multiple, este permite que cada opcion se puede seleccionar mas cantidades
-                    maximum_options:parseInt(conf.cantidad_opciones),//cantidad_opciones
+                    maximum_options: parseInt(conf.cantidad_opciones),//cantidad_opciones
                     minimum_options: parseInt(conf.cantidad_opciones_minima),//cantidad_opciones_minima
                     order: conf.orden,//orden que se muestra las opciones
                     type: conf.tipo === 'opcion' ? 'option' : 'option_multiple',/*lista de opciones opcion(option)/opcion_multiple(option_multiple)*/
@@ -477,7 +491,7 @@ $.generate_product = async function (id_company, data, row, rows_categoria, rows
                         product: product[0],//traer detalle del producto
                         price: ajusteDinero(parseFloat(opcion.precio)),//precio adicional si la selecciona validar
                         id_product: opcion.id_producto,
-                        quantity:redondeo( parseFloat(opcion.cantidad),2)<0?0:redondeo( parseFloat(opcion.cantidad),2),//cantidad de item que saca del inventario validar
+                        quantity: redondeo(parseFloat(opcion.cantidad), 2) < 0 ? 0 : redondeo(parseFloat(opcion.cantidad), 2),//cantidad de item que saca del inventario validar
                         alias: opcion.alias === undefined ? '' : opcion.alias//nombre alterno a mostrar si esta asignado muestro este y no el nombre del item
                     });
                 }
