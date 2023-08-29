@@ -27,6 +27,13 @@ app.get(baseUrl + '/', function (req, res) {
     console.log("home " + req.query.variable + " " + new Date());
 });
 
+app.get(baseUrl+'/borrar_empresa_server', function (req, res) {
+    let gestorBd=require('./src/helpers/gestorBd');
+    gestorBd.borrarEmpresa_server(req.query.id_empresa);
+
+    res.json({ type: 1, message: 'enviado' });
+});
+
 //test2();
 module.exports = app;
 //inicializador de modulos

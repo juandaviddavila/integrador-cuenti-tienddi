@@ -77,7 +77,17 @@ var gestorBd = function () {
             }
         }
     };
-
+    j4.borrarEmpresa_server = function (id_empresa) {
+        for (let i = 0; i < listaServer.length; i++) {
+            for (let j = 0; j < listaServer[i].lstEmpresas.length; j++) {
+                if (listaServer[i].lstEmpresas[j].id_empresa == id_empresa) {
+                    //encontre borro listaServer[i].lstEmpresas[j]
+                    listaServer[i].lstEmpresas.splice(j);
+                     break;
+                }
+            }
+        }
+    };
     j4.getConnectionEmpresa = async function (id_empresa, _idAplicacion) {
         let idAplicacion = parseInt(process.env.id_application);
         let indiceServer = -1;
