@@ -241,7 +241,7 @@ $.get_data_products = async (id_company, data) => {
         SQL = SQL.replace('{{adicional}}', '');
         //paginacion
         let desde_paginacion = 0;
-        let total_paginacion = 500;
+        let total_paginacion = 50000;
         if (data.pagina > -1) {
             //validar pagina
             if (data.pagina == 0) {
