@@ -19,7 +19,7 @@ app.use(express.json({ limit: '50mb' }));
 app.listen(process.env.port, () => {
     console.log('Servidor iniciado en el puerto ' + process.env.port);
 });
-
+BigInt.prototype.toJSON = function() { return this.toString() }
 // ruta de inicio
 app.get(baseUrl + '/', function (req, res) {
     res.json('home');

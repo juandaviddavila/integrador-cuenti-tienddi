@@ -34,12 +34,12 @@ var gestorBd = function () {
                 connectionLimit: parseInt(process.env.poolSizeBase_dev),
                 port: process.env.portDb_dev
             });
-        }else{
+        } else {
             console.log("Inicia pool en entrono de producción");
             j4.pool_bases = mariadb.createPool({
                 host: process.env.dbHost_pro,
                 user: process.env.dbUser_pro,
-                password:process.env.dbPwd_pro,
+                password: process.env.dbPwd_pro,
                 database: process.env.database_pro,
                 connectionLimit: parseInt(process.env.poolSizeBase_pro),
                 port: process.env.portDb_pro
@@ -55,7 +55,7 @@ var gestorBd = function () {
             console.log("tarer conexion");
             conn = await j4.pool_bases.getConnection();
             console.log("connected ! connection id is " + conn.threadId);
-            var SQL = "SELECT e.id_servidor,e.nombreBaseDatos,ip,puerto,usuario,\n"
+            var SQL = "SELECT s.es_proxy,e.id_servidor,e.nombreBaseDatos,ip,puerto,usuario,\n"
                 + "clave,initialSize,maxActive,maxIdle,maxTiempoInatividad,\n"
                 + "maxTiempoEsperaEntregarConecion FROM aplicaciones_empresa e INNER JOIN Servidores s ON(e.id_servidor=s.id) \n"
                 + " WHERE e.id_empresa=? AND e.id_aplicacion=?;";
@@ -83,7 +83,7 @@ var gestorBd = function () {
                 if (listaServer[i].lstEmpresas[j].id_empresa == id_empresa) {
                     //encontre borro listaServer[i].lstEmpresas[j]
                     listaServer[i].lstEmpresas.splice(j);
-                     break;
+                    break;
                 }
             }
         }
@@ -121,19 +121,21 @@ var gestorBd = function () {
             } else {
                 //registrar server
                 objServer.maxActive = parseInt(process.env.poolSizeBase_dev);
-                if(process.env.environment_data_base==='pro'){
+                if (process.env.environment_data_base === 'pro') {
                     objServer.maxActive = parseInt(process.env.poolSizeBase_pro);
                 }
-                var pool = mariadb.createPool({
-                    host: objServer.ip,
-                    user: objServer.usuario,
-                    password: objServer.clave,
-                    connectionLimit: objServer.maxActive,
-                    port: objServer.puerto,
-                    acquireTimeout: 1000 * 60
-                });
-                j4.pool_bases.on('connection', (conn) => console.log(`connection ${conn.threadId} has been created in pool idserver ${objServer.id_servidor}`));
-                j4.pool_bases.on('release', (conn) => console.log(`release ${conn.threadId} has been created in pool idserver ${objServer.id_servidor}`));
+                let pool = null;
+                if (objServer.es_proxy == 0) {
+                    pool = mariadb.createPool({
+                        host: objServer.ip,
+                        user: objServer.usuario,
+                        password: objServer.clave,
+                        connectionLimit: objServer.maxActive,
+                        port: objServer.puerto,
+                        acquireTimeout: 1000 * 60
+                    });
+                }
+               
                 listaServer.push({
                     id_servidor: objServer.id_servidor,
                     ip: objServer.ip,
@@ -145,16 +147,38 @@ var gestorBd = function () {
                     maxIdle: objServer.maxIdle,
                     maxTiempoInatividad: objServer.maxTiempoInatividad,
                     lstEmpresas: [{ id_empresa: id_empresa, nombreBaseDatos: objServer.nombreBaseDatos }],
-                    pool: pool
+                    pool: pool,
+                    es_proxy: objServer.es_proxy
                 });
-                pool.on('connection', (conn) => console.log(`connection ${conn.threadId} has been created in pool idserver ${objServer.id_servidor}`));
-                pool.on('release', (conn) => console.log(`release ${conn.threadId} has been created in pool idserver ${objServer.id_servidor}`));
+                if (objServer.es_proxy == 0) {
+                    pool.on('connection', (conn) => console.log(`connection ${conn.threadId} has been created in pool idserver ${objServer.id_servidor}`));
+                    pool.on('release', (conn) => console.log(`release ${conn.threadId} has been created in pool idserver ${objServer.id_servidor}`));
+                }
                 return await j4.getConnectionEmpresa(id_empresa, idAplicacion);
             }
             //registrar contenedor
         } else {
             console.log("server encontrado en indiceServer:" + indiceServer + " indiceEmpresa:" + indiceEmpresa);
-            let conn = await listaServer[indiceServer].pool.getConnection();
+            let conn=null;
+            if (listaServer[indiceServer].es_proxy == 1) {
+                conn = await mariadb.createConnection({
+                    host: listaServer[indiceServer].ip,
+                    user: listaServer[indiceServer].usuario,
+                    password: listaServer[indiceServer].clave,
+                    database: listaServer[indiceServer].lstEmpresas[indiceEmpresa].nombreBaseDatos,
+                    multipleStatements: true,
+                    port: listaServer[indiceServer].puerto,
+                    acquireTimeout: 1000000
+                });
+
+                console.log(`connection ${conn.threadId} has been created in coon proxy idserver ${indiceServer}`);
+                conn.release = async function () {
+                    console.log("cierre conexion " + this.threadId);
+                    await this.end();
+                }
+            } else {
+                conn = await listaServer[indiceServer].pool.getConnection();
+            }
             conn.queryFormat = function (query, values) {
                 if (!values) return query;
                 return query.replace(/\:(\w+)/g, function (txt, key) {
