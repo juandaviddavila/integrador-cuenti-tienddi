@@ -250,7 +250,7 @@ $.get_data_products = async (id_company, data) => {
                 desde_paginacion = data.pagina * total_paginacion;
             }
         }
-        rows = await conn.query2(SQL, { id_sucursal: data.id_branch, desde:desde_paginacion, total: total_paginacion });
+        rows = await conn.query2(SQL, { id_sucursal: data.id_branch, desde: desde_paginacion, total: total_paginacion });
 
         let SQlCategoria = objGestorSQL.getSqlNombre("integrador_tienddi", "list_categorias");
         rows_categoria = await conn.query2(SQlCategoria, {});
@@ -282,9 +282,9 @@ $.get_data_products = async (id_company, data) => {
     let lst = [];
     for (const row of rows) {
         if (row.nombre !== null) {
-            if (row.nombre.length >3) {
+            if (row.nombre.length > 3) {
                 lst.push(await $.generate_product(id_company, data, row, rows_categoria, rows_sucursal, rows_imagen));
-            }else{
+            } else {
                 console.log(1);
             }
         }
@@ -589,5 +589,77 @@ $.get_url_store_cuenti = async (id_company, data) => {
         }
     }
 };
+
+
+async function exportarAExcel(data) {
+    const ExcelJS = require('exceljs');
+    // Crear un nuevo libro de trabajo
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Datos');
+
+    if (data.length === 0) {
+        console.error('El array de datos está vacío.');
+        return;
+    }
+
+    // Obtener los encabezados de las columnas a partir de las claves del primer objeto
+    const columnas = Object.keys(data[0]).map(key => ({ header: key, key }));
+
+    // Asignar las columnas al worksheet
+    worksheet.columns = columnas;
+
+    // Agregar las filas de datos
+    data.forEach(item => {
+        worksheet.addRow(item);
+    });
+
+    // Guardar el archivo Excel
+    try {
+        const buffer = await workbook.xlsx.writeBuffer();
+        return buffer.toString('base64');
+    } catch (error) {
+        console.error('Error al guardar el archivo Excel:', error);
+    }
+}
+$.getMetricas = async (id_company, data) => {
+    let conn = null;
+    try {
+        conn = await objGestorBd.getConnectionEmpresa(id_company);
+
+        let SQL = `SELECT cl2.id_tipo_cliente,t.medio_pago,d.JSON,cl2.ciudad,cl2.departamento,cl2.pais,cl2.alias,cl.id_cliente AS id_proveedor,cl2.direccion,
+        d.id_producto,d.json,d.descripcion,
+        d.cantidad-ABS(cantidad_develta) AS 'cantidad',
+        (total/cantidad)*(cantidad-ABS(cantidad_develta))  AS tota_neto,
+        (d.costo/cantidad)*(cantidad-ABS(cantidad_develta)) AS costo,
+        t.id_transacion,d.fecha_registro,t.n_transacion,t.nFactura,d.equivalencia,d.presentacion,cl2.identificacion,cl2.nombre_cliente,
+        emp.nombre_completo AS empleado,cl.nombre_cliente AS provedor,cat.nombre_categoria,
+        mar.nombre_marca,t.numeracion,p.sku,d.precio_venta
+        FROM transacion_encabezado t
+        INNER JOIN transacion_detalle d
+        ON (t.id_transacion=d.id_transacion)
+        INNER JOIN inv_producto p ON (p.id_producto=d.id_producto)
+        INNER JOIN inv_producto_sucursal ps ON (ps.id=d.id_producto_sucursal)
+        LEFT JOIN adm_impuestos adm ON(adm.id_impuesto=ps.id_impuesto)
+        INNER JOIN adm_cliente cl ON(cl.id_cliente=ps.id_proveedor)
+        INNER JOIN adm_cliente cl2 ON(cl2.id_cliente=t.id_cliente)
+        INNER JOIN inv_categoria cat ON(cat.id_categoria=p.id_categoria)
+        INNER JOIN inv_marca mar ON(mar.id_marca=p.id_marca)
+        LEFT JOIN adm_empleados emp ON(emp.id_empleado=t.id_empleado)
+        LEFT JOIN adm_empleados vend ON(vend.id_empleado=t.id_vendedor)
+        WHERE t.tipoDocumento IN(1,9) AND t.es_nula=0 AND (t.fecha_registro BETWEEN :fecha1 AND  :fecha2)  ;`;
+        let base64String=await exportarAExcel(await conn.query2(SQL, data));
+        return base64String;
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            // conn.end();
+            conn.release(); //release to pool
+        }
+    }
+};
+
 // Exportamos
 module.exports = $;
