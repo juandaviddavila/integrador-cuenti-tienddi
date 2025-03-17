@@ -55,7 +55,7 @@ router.get('/getMetricas/:id_company/:fecha1/:fecha2/:clave', async function (re
         //  var data = fs.readFileSync(name_file);
         res.contentType("application/xlsx");
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader("Content-Disposition", "attachment; filename=informe_ventas_" + req.headers['id-company'] + ".xlsx");
+        res.setHeader("Content-Disposition", "attachment; filename=informe_ventas_" + req.params.id_company + ".xlsx");
 
         res.send(data.content);
     } catch (e) {
