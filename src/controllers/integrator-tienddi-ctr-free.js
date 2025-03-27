@@ -62,5 +62,41 @@ router.get('/getMetricas/:id_company/:fecha1/:fecha2/:clave', async function (re
         fileManager.managerErrorApi(res, e);
     }
 });
+
+router.get('/getMetricas_producto/:id_company/:id_sucursal/:id_producto/:meses_antes/:export_excel/:clave', async function (req, res) {
+    try {
+        if(req.params.clave!=="jdoaosdoieokoi4oi4o34o234sd485484DWjhhcv5897444343434==="){
+
+            res.json({
+                type: 0,
+                message: 'clave mala',
+            })
+        }
+        if (req.params.meses_antes>12) {
+            res.json({
+                type: 0,
+                message: 'La diferencia entre las fechas es mayor a 12 meses',
+            })
+        }
+        let r = await objIntegratorTienddiBl.getMetricas_producto(req.params.id_company, req.params);
+        if(req.params.export_excel==1){
+            let data = fileManager.base64ToFile(r);
+            if (r === null) {
+                res.json(r);
+                return;
+            }
+            //  var data = fs.readFileSync(name_file);
+            res.contentType("application/xlsx");
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader("Content-Disposition", "attachment; filename=informe_ventas_" + req.params.id_company + ".xlsx");
+    
+            res.send(data.content);
+        }else{
+            res.json(r);
+        }
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
 // Exportamos las funciones en un objeto
 module.exports = router;
