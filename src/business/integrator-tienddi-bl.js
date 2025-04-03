@@ -591,6 +591,25 @@ $.get_url_store_cuenti = async (id_company, data) => {
 };
 
 
+/*************  ✨ Codeium Command ⭐  *************/
+/**
+ * Exports data to an Excel file and returns it as a base64 string.
+ * 
+ * This function takes an array of objects as input, where each object represents a row 
+ * of data. The keys of the first object are used as column headers in the Excel file.
+ * The data is written to a worksheet named 'Datos'.
+ * 
+ * @param {Array<Object>} data - An array of objects representing the data to be exported.
+ * Each object should have consistent keys as they are used for column headers.
+ * 
+ * @returns {Promise<string>} - A promise that resolves to a base64 encoded string 
+ * representing the Excel file. If the data array is empty, the function logs an error 
+ * and returns undefined.
+ * 
+ * @throws Will log an error if there is an issue writing the Excel file to a buffer.
+ */
+
+/******  7f541aa9-7ea0-47b6-b872-c1f46d43826b  *******/
 async function exportarAExcel(data) {
     const ExcelJS = require('exceljs');
     // Crear un nuevo libro de trabajo
@@ -629,7 +648,8 @@ $.getMetricas = async (id_company, data) => {
         let SQL = `SELECT cl2.id_tipo_cliente,t.medio_pago,d.JSON,cl2.ciudad,cl2.departamento,cl2.pais,cl2.alias,cl.id_cliente AS id_proveedor,cl2.direccion,
         d.id_producto,d.json,d.descripcion,
         d.cantidad-ABS(cantidad_develta) AS 'cantidad',
-        (total/cantidad)*(cantidad-ABS(cantidad_develta))  AS tota_neto,
+        (total/cantidad)*(cantidad-ABS(cantidad_develta))  AS total_neto,
+        ps.costo as costo_actual,
         (d.costo/cantidad)*(cantidad-ABS(cantidad_develta)) AS costo,
         t.id_transacion,d.fecha_registro,t.n_transacion,t.nFactura,d.equivalencia,d.presentacion,cl2.identificacion,cl2.nombre_cliente,
         emp.nombre_completo AS empleado,cl.nombre_cliente AS provedor,cat.nombre_categoria,
@@ -646,8 +666,15 @@ $.getMetricas = async (id_company, data) => {
         INNER JOIN inv_marca mar ON(mar.id_marca=p.id_marca)
         LEFT JOIN adm_empleados emp ON(emp.id_empleado=t.id_empleado)
         LEFT JOIN adm_empleados vend ON(vend.id_empleado=t.id_vendedor)
-        WHERE t.tipoDocumento IN(1,9) AND t.es_nula=0 AND (t.fecha_registro BETWEEN :fecha1 AND  :fecha2)  ;`;
-        let base64String = await exportarAExcel(await conn.query2(SQL, data));
+        WHERE t.tipoDocumento IN(1,9) AND t.es_nula=0 and t.id_sucursal=1 AND (t.fecha_registro BETWEEN :fecha1 AND  :fecha2)  ;`;
+        let rows=await conn.query2(SQL, data);
+        for (let row_detalle of rows) {
+            row_detalle.cantidad = parseFloat(row_detalle.cantidad);
+            row_detalle.total_neto = parseFloat(row_detalle.total_neto);
+            row_detalle.costo = parseFloat(row_detalle.costo);
+            row_detalle.costo_actual = parseFloat(row_detalle.costo_actual*row_detalle.cantidad);
+        }
+        let base64String = await exportarAExcel(rows);
         return base64String;
     } catch (error) {
         console.error(error);
@@ -660,7 +687,6 @@ $.getMetricas = async (id_company, data) => {
         }
     }
 };
-
 $.getMetricas_producto = async (id_company, data) => {
     let conn = null;
     try {
