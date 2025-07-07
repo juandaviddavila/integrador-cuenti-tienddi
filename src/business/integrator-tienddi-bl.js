@@ -578,7 +578,7 @@ $.get_url_store_cuenti = async (id_company, data) => {
         conn = await objGestorBd.getPool_bases();
         let SQL = objGestorSQL.getSqlNombre("integrador_tienddi", "get_url_tienddi");
         const rows = await conn.query2(SQL, { id_company: id_company, id_branch: data.id_branch });
-        return rows;
+        return rows; 
     } catch (err) {
         console.log("error:" + err);
         throw err;
