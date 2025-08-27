@@ -687,44 +687,106 @@ $.getMetricas = async (id_company, data) => {
         }
     }
 };
+$.storeInCache = async function (cacheName, object, ttlInSeconds) {
+    try {
+        //validar cache
+        var config = {
+            method: "post",
+            timeout: 1000 * 10, // Wait for 3 seconds
+            url: process.env.url_api_cache_redis + "/api/v1/storeInCache",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            data: {
+                cacheName: cacheName,
+                object: object,
+                ttlInSeconds: ttlInSeconds,
+            },
+        };
+        const resp = await axios(config);
+        // console.log(resp.data);
+        return resp.data;
+    } catch (err) {
+        // Handle Error Here
+        console.error(err);
+        return null;
+    }
+};
+$.getFromCache = async function (cacheName) {
+    try {
+        //validar cache
+        var config = {
+            method: "post",
+            timeout: 1000 * 10, // Wait for 3 seconds
+            url: process.env.url_api_cache_redis + "/api/v1/getFromCache",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            data: {
+                cacheName: cacheName,
+            },
+        };
+        const resp = await axios(config);
+        // console.log(resp.data);
+        if (resp.data.type == 0) {
+            return null;
+        } else {
+            if (resp.data.message === null) {
+                return null;
+            } else {
+                return resp.data.message;
+            }
+        }
+    } catch (err) {
+        // Handle Error Here
+        console.error(err);
+        return null;
+    }
+};
 $.getMetricas_producto = async (id_company, data) => {
     let conn = null;
     try {
-        conn = await objGestorBd.getConnectionEmpresa(id_company);
-        let SQL_fechaMinima = `SELECT MIN(dt.fecha_registro) FROM transacion_detalle dt INNER JOIN transacion_detalle_ads da ON(da.id_detalle_transacion=dt.id_detalle_transacion)  
+        let cache = "cache_serie_tiempo_" + id_company + "_" + data.id_sucursal + "_" + data.id_producto + "_" + data.meses_antes;
+        let row = null;
+        let data_cache = await $.getFromCache(cache);
+        if (data_cache === null) {
+            conn = await objGestorBd.getConnectionEmpresa(id_company);
+            let SQL_fechaMinima = `SELECT MIN(dt.fecha_registro) FROM transacion_detalle dt INNER JOIN transacion_detalle_ads da ON(da.id_detalle_transacion=dt.id_detalle_transacion)  
         WHERE  dt.id_producto=:id_producto AND da.id_sucursal=:id_sucursal AND da.es_nulo=0 AND da.tipo_documento IN(1,9) LIMIT 1;`;
-        let row = await conn.query2(SQL_fechaMinima, data);
-        let fecha_minima = null;
-        if (row.length > 0) {
-            fecha_minima = row[0]['MIN(dt.fecha_registro)'];
-        }
+            row = await conn.query2(SQL_fechaMinima, data);
+            let fecha_minima = null;
+            if (row.length > 0) {
+                fecha_minima = row[0]['MIN(dt.fecha_registro)'];
+            }
 
-arreglar esto debemos garantizar eld escuento del dia realpath, montar bn y con cache para dejarlo listo
-agregar variable si e spromocion con una variable exogena
-        // Obtén la fecha actual
-        const fechaActual = new Date();
+            //arreglar esto debemos garantizar eld escuento del dia realpath, montar bn y con cache para dejarlo listo
+            //agregar variable si e spromocion con una variable exogena
+            // Obtén la fecha actual
+            const fechaActual = new Date();
 
-        // Resta los meses a la fecha actual
-        // La función setMonth se encarga de ajustar el año si es necesario.
-        fechaActual.setMonth(fechaActual.getMonth() - parseInt(data.meses_antes));
+            // Resta los meses a la fecha actual
+            // La función setMonth se encarga de ajustar el año si es necesario.
+            fechaActual.setMonth(fechaActual.getMonth() - parseInt(data.meses_antes));
 
-        // Asigna la fecha modificada a la variable fecha_corte
-        const fecha_corte = fechaActual;
+            // Asigna la fecha modificada a la variable fecha_corte
+            const fecha_corte = fechaActual;
 
-        console.log("Fecha de corte:", fecha_corte);
+            console.log("Fecha de corte:", fecha_corte);
 
-        let SQL = `SELECT mes AS fecha,MONTH(mes)AS mes, DAY( dia )AS dia,SUM(ROUND (cantidad,2)) AS cantidad,SUM(costo)AS costo,SUM(ROUND (precio_venta_neto,2)) AS precio_venta_neto,
-            SUM(ROUND (precio_unitario,2)) AS precio_unitario,
-            SUM(ROUND (total,2)) AS total,
-            SUM(ROUND (total_descuento,2)) AS total_descuento   FROM(
+            let SQL = `SELECT mes AS fecha,MONTH(mes)AS mes, DAY( dia )AS dia,SUM(ROUND (cantidad,2)) AS cantidad,
+            SUM(ROUND (total_price,2)) AS total_price,
+            SUM(ROUND (total_discount,2)) AS total_discount,
+            SUM(ROUND (num_promotions,2)) AS num_promotions,
+            SUM(ROUND (num_discounts,2)) AS num_discounts   FROM(
             SELECT  d._date AS mes,d._date AS dia,
             ROUND(SUM(dt.cantidad-dt.cantidad_develta),2) AS cantidad,
-            ROUND(AVG(IFNULL(da.costo,0)),2) AS costo,
-            ROUND(AVG((dt.total/(dt.cantidad))+(IFNULL(dt.total_estampilla,0))+IFNULL(dt.total_impoconsumo,0)),2) AS precio_venta_neto,
-            ROUND(AVG(dt.precio_venta),2)  AS precio_unitario,
 
-            ROUND(SUM((dt.total/(dt.cantidad-dt.cantidad_develta))+(IFNULL(dt.total_estampilla,0))+IFNULL(dt.total_impoconsumo,0))*(dt.cantidad-dt.cantidad_develta),2) AS total,
-            ROUND(SUM((dt.descuento_valor/(dt.cantidad-dt.cantidad_develta)))*(dt.cantidad-dt.cantidad_develta),2) AS total_descuento
+            ROUND(SUM((dt.total/(dt.cantidad))*(dt.cantidad-dt.cantidad_develta)),2) AS total_price,
+            ROUND(SUM(((dt.descuento_valor/(dt.cantidad))*(dt.cantidad-dt.cantidad_develta))),2) AS total_discount,
+            SUM(dt.es_promocion) AS num_promotions,
+            --  Aquí cuentas las veces que descuento_valor > 0
+            SUM(CASE WHEN dt.descuento_valor > 0 THEN 1 ELSE 0 END) AS num_discounts
+
 
             FROM transacion_detalle dt
             INNER JOIN j4pro_aux.dimdate d ON(dt.DateKey_hora=d.DateKey_hora)
@@ -732,27 +794,44 @@ agregar variable si e spromocion con una variable exogena
             d._date >= DATE_SUB(CURDATE(), INTERVAL :meses_antes MONTH) AND d._date <= DATE_SUB(CURDATE(), INTERVAL 1 DAY) :fecha_minima
             GROUP BY d._day
             UNION ALL
-            SELECT d._date AS mes,d._date AS dia,0 AS cantidad,0 AS costo,0 AS precio_venta_neto,0 AS precio_unitario,
-            0 AS total,0 AS total_descuento   FROM j4pro_aux.dimdate d WHERE d._hour=0 AND 
+            SELECT d._date AS mes,d._date AS dia,0 AS cantidad,
+            0 AS total_price,0 AS total_discount,0 AS num_promotions,0 AS num_discounts   FROM j4pro_aux.dimdate d WHERE d._hour=0 AND 
             d._date >= DATE_SUB(CURDATE(), INTERVAL :meses_antes MONTH) AND d._date <= DATE_SUB(CURDATE(), INTERVAL 1 DAY) :fecha_minima
             GROUP BY d._day
             )d GROUP BY d.dia ORDER BY fecha;`;
-        if (fecha_minima != null) {
-            if (fecha_minima <= fecha_corte) {
-                SQL = SQL.replaceAll(":fecha_minima", "");
+
+            if (fecha_minima != null) {
+                if (fecha_minima <= fecha_corte) {
+                    SQL = SQL.replaceAll(":fecha_minima", "");
+                } else {
+                    const fechaMinimaFormateada = fecha_minima.toISOString().split('T')[0];
+                    SQL = SQL.replaceAll(":fecha_minima", "AND d._date>='" + fechaMinimaFormateada + "'");
+                }
             } else {
-                const fechaMinimaFormateada = fecha_minima.toISOString().split('T')[0];
-                SQL = SQL.replaceAll(":fecha_minima", "AND d._date>='" + fechaMinimaFormateada + "'");
+                SQL = SQL.replaceAll(":fecha_minima", "");
             }
+            row = await conn.query2(SQL, data);
+            for (let row_detalle of row) {
+                // row_detalle.costo = parseFloat(row_detalle.costo);
+                // row_detalle.precio_venta_neto = parseFloat(row_detalle.precio_venta_neto);
+                //row_detalle.precio_unitario = parseFloat(row_detalle.precio_unitario);
+                //row_detalle.cantidad = parseFloat(row_detalle.cantidad);
+
+                row_detalle.y = parseFloat(row_detalle.cantidad);
+                row_detalle.total_price = parseFloat(row_detalle.total_price);
+                row_detalle.total_discount = parseFloat(row_detalle.total_discount);
+                row_detalle.num_promotions = parseInt(row_detalle.num_promotions);
+                row_detalle.num_discounts = parseInt(row_detalle.num_discounts);
+                delete row_detalle.cantidad;
+                delete row_detalle.costo;
+                delete row_detalle.precio_venta_neto;
+                delete row_detalle.precio_unitario;
+                delete row_detalle.mes;
+                delete row_detalle.dia;
+            }
+            await $.storeInCache(cache, row, ttlInSeconds = 86400);
         } else {
-            SQL = SQL.replaceAll(":fecha_minima", "");
-        }
-        row = await conn.query2(SQL, data);
-        for (let row_detalle of row) {
-            row_detalle.costo = parseFloat(row_detalle.costo);
-            row_detalle.precio_venta_neto = parseFloat(row_detalle.precio_venta_neto);
-            row_detalle.precio_unitario = parseFloat(row_detalle.precio_unitario);
-            row_detalle.cantidad = parseFloat(row_detalle.cantidad);
+            row = data_cache;
         }
         if (data.export_excel == 1) {
             let base64String = await exportarAExcel(row);
