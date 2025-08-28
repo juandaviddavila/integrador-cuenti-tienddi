@@ -578,7 +578,7 @@ $.get_url_store_cuenti = async (id_company, data) => {
         conn = await objGestorBd.getPool_bases();
         let SQL = objGestorSQL.getSqlNombre("integrador_tienddi", "get_url_tienddi");
         const rows = await conn.query2(SQL, { id_company: id_company, id_branch: data.id_branch });
-        return rows; 
+        return rows;
     } catch (err) {
         console.log("error:" + err);
         throw err;
@@ -667,12 +667,12 @@ $.getMetricas = async (id_company, data) => {
         LEFT JOIN adm_empleados emp ON(emp.id_empleado=t.id_empleado)
         LEFT JOIN adm_empleados vend ON(vend.id_empleado=t.id_vendedor)
         WHERE t.tipoDocumento IN(1,9) AND t.es_nula=0 and t.id_sucursal=1 AND (t.fecha_registro BETWEEN :fecha1 AND  :fecha2)  ;`;
-        let rows=await conn.query2(SQL, data);
+        let rows = await conn.query2(SQL, data);
         for (let row_detalle of rows) {
             row_detalle.cantidad = parseFloat(row_detalle.cantidad);
             row_detalle.total_neto = parseFloat(row_detalle.total_neto);
             row_detalle.costo = parseFloat(row_detalle.costo);
-            row_detalle.costo_actual = parseFloat(row_detalle.costo_actual*row_detalle.cantidad);
+            row_detalle.costo_actual = parseFloat(row_detalle.costo_actual * row_detalle.cantidad);
         }
         let base64String = await exportarAExcel(rows);
         return base64String;
@@ -699,7 +699,8 @@ $.getMetricas_producto = async (id_company, data) => {
             fecha_minima = row[0]['MIN(dt.fecha_registro)'];
         }
 
-
+arreglar esto debemos garantizar eld escuento del dia realpath, montar bn y con cache para dejarlo listo
+agregar variable si e spromocion con una variable exogena
         // Obtén la fecha actual
         const fechaActual = new Date();
 
@@ -713,28 +714,35 @@ $.getMetricas_producto = async (id_company, data) => {
         console.log("Fecha de corte:", fecha_corte);
 
         let SQL = `SELECT mes AS fecha,MONTH(mes)AS mes, DAY( dia )AS dia,SUM(ROUND (cantidad,2)) AS cantidad,SUM(costo)AS costo,SUM(ROUND (precio_venta_neto,2)) AS precio_venta_neto,
-            SUM(ROUND (precio_unitario,2)) AS precio_unitario   FROM(
+            SUM(ROUND (precio_unitario,2)) AS precio_unitario,
+            SUM(ROUND (total,2)) AS total,
+            SUM(ROUND (total_descuento,2)) AS total_descuento   FROM(
             SELECT  d._date AS mes,d._date AS dia,
             ROUND(SUM(dt.cantidad-dt.cantidad_develta),2) AS cantidad,
             ROUND(AVG(IFNULL(da.costo,0)),2) AS costo,
             ROUND(AVG((dt.total/(dt.cantidad))+(IFNULL(dt.total_estampilla,0))+IFNULL(dt.total_impoconsumo,0)),2) AS precio_venta_neto,
-            ROUND(AVG(dt.precio_venta),2)  AS precio_unitario
+            ROUND(AVG(dt.precio_venta),2)  AS precio_unitario,
+
+            ROUND(SUM((dt.total/(dt.cantidad-dt.cantidad_develta))+(IFNULL(dt.total_estampilla,0))+IFNULL(dt.total_impoconsumo,0))*(dt.cantidad-dt.cantidad_develta),2) AS total,
+            ROUND(SUM((dt.descuento_valor/(dt.cantidad-dt.cantidad_develta)))*(dt.cantidad-dt.cantidad_develta),2) AS total_descuento
+
             FROM transacion_detalle dt
             INNER JOIN j4pro_aux.dimdate d ON(dt.DateKey_hora=d.DateKey_hora)
             INNER JOIN transacion_detalle_ads da ON(da.id_detalle_transacion=dt.id_detalle_transacion) WHERE da.id_sucursal=:id_sucursal AND da.es_nulo=0 AND da.tipo_documento IN(1,9) AND dt.id_producto=:id_producto AND 
             d._date >= DATE_SUB(CURDATE(), INTERVAL :meses_antes MONTH) AND d._date <= DATE_SUB(CURDATE(), INTERVAL 1 DAY) :fecha_minima
             GROUP BY d._day
             UNION ALL
-            SELECT d._date AS mes,d._date AS dia,0 AS cantidad,0 AS costo,0 AS precio_venta_neto,0 AS precio_unitario   FROM j4pro_aux.dimdate d WHERE d._hour=0 AND 
+            SELECT d._date AS mes,d._date AS dia,0 AS cantidad,0 AS costo,0 AS precio_venta_neto,0 AS precio_unitario,
+            0 AS total,0 AS total_descuento   FROM j4pro_aux.dimdate d WHERE d._hour=0 AND 
             d._date >= DATE_SUB(CURDATE(), INTERVAL :meses_antes MONTH) AND d._date <= DATE_SUB(CURDATE(), INTERVAL 1 DAY) :fecha_minima
             GROUP BY d._day
             )d GROUP BY d.dia ORDER BY fecha;`;
         if (fecha_minima != null) {
-            if(fecha_minima<=fecha_corte){
-                SQL = SQL.replaceAll(":fecha_minima", ""); 
-            }else{
+            if (fecha_minima <= fecha_corte) {
+                SQL = SQL.replaceAll(":fecha_minima", "");
+            } else {
                 const fechaMinimaFormateada = fecha_minima.toISOString().split('T')[0];
-                SQL = SQL.replaceAll(":fecha_minima", "AND d._date>='"+fechaMinimaFormateada+"'");
+                SQL = SQL.replaceAll(":fecha_minima", "AND d._date>='" + fechaMinimaFormateada + "'");
             }
         } else {
             SQL = SQL.replaceAll(":fecha_minima", "");
