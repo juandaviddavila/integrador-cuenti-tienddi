@@ -822,6 +822,9 @@ $.getMetricas_producto = async (id_company, data) => {
                 row_detalle.total_discount = parseFloat(row_detalle.total_discount);
                 row_detalle.num_promotions = parseInt(row_detalle.num_promotions);
                 row_detalle.num_discounts = parseInt(row_detalle.num_discounts);
+
+                row_detalle.ds = row_detalle.fecha;
+                delete row_detalle.fecha;
                 delete row_detalle.cantidad;
                 delete row_detalle.costo;
                 delete row_detalle.precio_venta_neto;
