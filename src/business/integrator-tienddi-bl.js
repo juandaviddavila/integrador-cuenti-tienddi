@@ -774,19 +774,21 @@ $.getMetricas_producto = async (id_company, data) => {
             console.log("Fecha de corte:", fecha_corte);
 
             let SQL = `SELECT mes AS fecha,MONTH(mes)AS mes, DAY( dia )AS dia,SUM(ROUND (cantidad,2)) AS cantidad,
-            SUM(ROUND (total_price,2)) AS total_price,
-            SUM(ROUND (total_discount,2)) AS total_discount,
+            SUM(ROUND (total_price2,2)) AS total_price2,
+            (ROUND (avg_price,2)) AS avg_price,
+            (ROUND (avg_discount,2)) AS avg_discount,
             SUM(ROUND (num_promotions,2)) AS num_promotions,
             SUM(ROUND (num_discounts,2)) AS num_discounts   FROM(
             SELECT  d._date AS mes,d._date AS dia,
             ROUND(SUM(dt.cantidad-dt.cantidad_develta),2) AS cantidad,
 
-            ROUND(SUM((dt.total/(dt.cantidad))*(dt.cantidad-dt.cantidad_develta)),2) AS total_price,
-            ROUND(SUM(((dt.descuento_valor/(dt.cantidad))*(dt.cantidad-dt.cantidad_develta))),2) AS total_discount,
+            ROUND(SUM((dt.total/(dt.cantidad))*(dt.cantidad-dt.cantidad_develta)),2) AS total_price2,
+            -- promedio real de precios dia
+            ROUND(SUM((dt.total/(dt.cantidad))*(dt.cantidad-dt.cantidad_develta))/(SUM(dt.cantidad-dt.cantidad_develta)),2) AS avg_price,
+            ROUND(SUM(((dt.descuento_valor/(dt.cantidad))*(dt.cantidad-dt.cantidad_develta)))/(SUM(dt.cantidad-dt.cantidad_develta)),2) AS avg_discount,
             SUM(dt.es_promocion) AS num_promotions,
             --  Aquí cuentas las veces que descuento_valor > 0
             SUM(CASE WHEN dt.descuento_valor > 0 THEN 1 ELSE 0 END) AS num_discounts
-
 
             FROM transacion_detalle dt
             INNER JOIN j4pro_aux.dimdate d ON(dt.DateKey_hora=d.DateKey_hora)
@@ -794,8 +796,8 @@ $.getMetricas_producto = async (id_company, data) => {
             d._date >= DATE_SUB(CURDATE(), INTERVAL :meses_antes MONTH) AND d._date <= DATE_SUB(CURDATE(), INTERVAL 1 DAY) :fecha_minima
             GROUP BY d._day
             UNION ALL
-            SELECT d._date AS mes,d._date AS dia,0 AS cantidad,
-            0 AS total_price,0 AS total_discount,0 AS num_promotions,0 AS num_discounts   FROM j4pro_aux.dimdate d WHERE d._hour=0 AND 
+            SELECT d._date AS mes,d._date AS dia,0 AS cantidad,0 AS total_price2,
+            0 AS avg_price,0 AS avg_discount,0 AS num_promotions,0 AS num_discounts   FROM j4pro_aux.dimdate d WHERE d._hour=0 AND 
             d._date >= DATE_SUB(CURDATE(), INTERVAL :meses_antes MONTH) AND d._date <= DATE_SUB(CURDATE(), INTERVAL 1 DAY) :fecha_minima
             GROUP BY d._day
             )d GROUP BY d.dia ORDER BY fecha;`;
@@ -818,8 +820,9 @@ $.getMetricas_producto = async (id_company, data) => {
                 //row_detalle.cantidad = parseFloat(row_detalle.cantidad);
 
                 row_detalle.y = parseFloat(row_detalle.cantidad);
-                row_detalle.total_price = parseFloat(row_detalle.total_price);
-                row_detalle.total_discount = parseFloat(row_detalle.total_discount);
+                row_detalle.avg_price = parseFloat(row_detalle.avg_price);
+                row_detalle.total_price2 = parseFloat(row_detalle.total_price2);
+                row_detalle.avg_discount = parseFloat(row_detalle.avg_discount);
                 row_detalle.num_promotions = parseInt(row_detalle.num_promotions);
                 row_detalle.num_discounts = parseInt(row_detalle.num_discounts);
 
