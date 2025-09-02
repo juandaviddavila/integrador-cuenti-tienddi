@@ -743,6 +743,40 @@ $.getFromCache = async function (cacheName) {
         return null;
     }
 };
+
+function isNonZeroNumber(v) {
+    return v != null && isFinite(v) && Number(v) !== 0;
+}
+
+function imputeAvgPrice(rows) {
+    // Asegúrate de que vengan ordenados por fecha ascendente (ds)
+    // rows.sort((a,b) => new Date(a.ds) - new Date(b.ds));
+
+    // 1) Forward fill: usar el anterior ≠ 0
+    let last = null;
+    for (let i = 0; i < rows.length; i++) {
+        const v = Number(rows[i].avg_price);
+        if (isNonZeroNumber(v)) {
+            last = v;
+        } else if (last != null) {
+            rows[i].avg_price = last;
+        }
+    }
+
+    // 2) Backward fill: para los que quedaron al inicio sin anterior ≠ 0
+    let next = null;
+    for (let i = rows.length - 1; i >= 0; i--) {
+        const v = Number(rows[i].avg_price);
+        if (isNonZeroNumber(v)) {
+            next = v;
+        } else if (next != null) {
+            rows[i].avg_price = next;
+        }
+    }
+
+    return rows;
+}
+
 $.getMetricas_producto = async (id_company, data) => {
     let conn = null;
     try {
@@ -774,7 +808,7 @@ $.getMetricas_producto = async (id_company, data) => {
             console.log("Fecha de corte:", fecha_corte);
 
             let SQL = `SELECT mes AS fecha,MONTH(mes)AS mes, DAY( dia )AS dia,SUM(ROUND (cantidad,2)) AS cantidad,
-            SUM(ROUND (total_price2,2)) AS total_price2,
+            SUM(ROUND (total_price,2)) AS total_price,
             (ROUND (avg_price,2)) AS avg_price,
             (ROUND (avg_discount,2)) AS avg_discount,
             SUM(ROUND (num_promotions,2)) AS num_promotions,
@@ -782,7 +816,7 @@ $.getMetricas_producto = async (id_company, data) => {
             SELECT  d._date AS mes,d._date AS dia,
             ROUND(SUM(dt.cantidad-dt.cantidad_develta),2) AS cantidad,
 
-            ROUND(SUM((dt.total/(dt.cantidad))*(dt.cantidad-dt.cantidad_develta)),2) AS total_price2,
+            ROUND(SUM((dt.total/(dt.cantidad))*(dt.cantidad-dt.cantidad_develta)),2) AS total_price,
             -- promedio real de precios dia
             ROUND(SUM((dt.total/(dt.cantidad))*(dt.cantidad-dt.cantidad_develta))/(SUM(dt.cantidad-dt.cantidad_develta)),2) AS avg_price,
             ROUND(SUM(((dt.descuento_valor/(dt.cantidad))*(dt.cantidad-dt.cantidad_develta)))/(SUM(dt.cantidad-dt.cantidad_develta)),2) AS avg_discount,
@@ -796,7 +830,7 @@ $.getMetricas_producto = async (id_company, data) => {
             d._date >= DATE_SUB(CURDATE(), INTERVAL :meses_antes MONTH) AND d._date <= DATE_SUB(CURDATE(), INTERVAL 1 DAY) :fecha_minima
             GROUP BY d._day
             UNION ALL
-            SELECT d._date AS mes,d._date AS dia,0 AS cantidad,0 AS total_price2,
+            SELECT d._date AS mes,d._date AS dia,0 AS cantidad,0 AS total_price,
             0 AS avg_price,0 AS avg_discount,0 AS num_promotions,0 AS num_discounts   FROM j4pro_aux.dimdate d WHERE d._hour=0 AND 
             d._date >= DATE_SUB(CURDATE(), INTERVAL :meses_antes MONTH) AND d._date <= DATE_SUB(CURDATE(), INTERVAL 1 DAY) :fecha_minima
             GROUP BY d._day
@@ -813,6 +847,7 @@ $.getMetricas_producto = async (id_company, data) => {
                 SQL = SQL.replaceAll(":fecha_minima", "");
             }
             row = await conn.query2(SQL, data);
+
             for (let row_detalle of row) {
                 // row_detalle.costo = parseFloat(row_detalle.costo);
                 // row_detalle.precio_venta_neto = parseFloat(row_detalle.precio_venta_neto);
@@ -821,7 +856,7 @@ $.getMetricas_producto = async (id_company, data) => {
 
                 row_detalle.y = parseFloat(row_detalle.cantidad);
                 row_detalle.avg_price = parseFloat(row_detalle.avg_price);
-                row_detalle.total_price2 = parseFloat(row_detalle.total_price2);
+                row_detalle.total_price = parseFloat(row_detalle.total_price);
                 row_detalle.avg_discount = parseFloat(row_detalle.avg_discount);
                 row_detalle.num_promotions = parseInt(row_detalle.num_promotions);
                 row_detalle.num_discounts = parseInt(row_detalle.num_discounts);
@@ -834,7 +869,16 @@ $.getMetricas_producto = async (id_company, data) => {
                 delete row_detalle.precio_unitario;
                 delete row_detalle.mes;
                 delete row_detalle.dia;
+                row_detalle.promotions_flag = 0;
+                row_detalle.discounts_flag = 0;
+                if (row_detalle.num_discounts > 0) {
+                    row_detalle.discounts_flag = 1;
+                }
+                if (row_detalle.num_promotions > 0) {
+                    row_detalle.promotions_flag = 1;
+                }
             }
+            //row = imputeAvgPrice(row);
             await $.storeInCache(cache, row, ttlInSeconds = 86400);
         } else {
             row = data_cache;
