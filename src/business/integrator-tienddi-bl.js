@@ -820,11 +820,21 @@ $.getMetricas_producto = async (id_company, data) => {
                 //row_detalle.cantidad = parseFloat(row_detalle.cantidad);
 
                 row_detalle.y = parseFloat(row_detalle.cantidad);
+
+                row_detalle.total_price = row_detalle.total_price === null ? 0 : row_detalle.total_price;
+                row_detalle.avg_price = row_detalle.avg_price === null ? 0 : row_detalle.avg_price;
+                row_detalle.avg_discount = row_detalle.avg_discount === null ? 0 : row_detalle.avg_discount;
+                row_detalle.num_discounts = row_detalle.num_discounts === null ? 0 : row_detalle.num_discounts;
+                row_detalle.num_promotions = row_detalle.num_promotions === null ? 0 : row_detalle.num_promotions;
+                row_detalle.total_price2 = row_detalle.total_price2 === null ? 0 : row_detalle.total_price2;
+
                 row_detalle.avg_price = parseFloat(row_detalle.avg_price);
                 row_detalle.total_price2 = parseFloat(row_detalle.total_price2);
                 row_detalle.avg_discount = parseFloat(row_detalle.avg_discount);
                 row_detalle.num_promotions = parseInt(row_detalle.num_promotions);
                 row_detalle.num_discounts = parseInt(row_detalle.num_discounts);
+
+
 
                 row_detalle.ds = row_detalle.fecha;
                 delete row_detalle.fecha;
