@@ -1154,15 +1154,17 @@ $.activarPagos = async (data) => {
             lst_configuraciones = await $.getConfigurations({ id_empresa: data.id_empresa, id_sucursal: lstPagos_pendientes[0].id_sucursal });
             lst_configuraciones = lst_configuraciones.data.data;
         }
+        let cantidad = 0;
         for (let row of lstPagos_pendientes) {
             //validar cada referencia si esta ya esta pagada
             let r = await validacionPagosCuentiPay(token, lst_configuraciones, row);
             if (r.type == 1 || r.type == 2) {
                 //desactivar intenciones
                 await $.deletePaymentLink({ id: row.id });
+                cantidad++;
             }
         }
-        return { type: 1 };
+        return { type: 1, cantidad: cantidad };
     } catch (error) {
         console.error(error);
         throw error;
