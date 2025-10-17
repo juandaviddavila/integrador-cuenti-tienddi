@@ -911,5 +911,361 @@ $.getMetricas_producto = async (id_company, data) => {
     }
 };
 
+$.get_token_api = async (id_empresa) => {
+    let conn = null;
+    try {
+        console.log("traer conexion");
+        conn = await objGestorBd.getPool_bases();
+        let SQL = 'SELECT api FROM empresas WHERE id_empresa=:id_empresa;';
+        const rows = await conn.query2(SQL, { id_empresa: id_empresa });
+        return rows[0].api;
+    } catch (err) {
+        console.log("error:" + err);
+        throw err;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            conn.end();//cerrar conexion y regresarlo
+        }
+    }
+};
+$.registrar_intencion_pago_cuenti_pay = async (data) => {
+    let conn = null;
+    try {
+        console.log("traer conexion");
+        conn = await objGestorBd.getPool_bases();
+        let SQL = 'INSERT INTO boton_pago_intencion(id_empresa,id_transaccion,codigo,valor,url,x_gtm,id_sucursal)VALUES(:id_empresa,:id_transaccion,:codigo,:valor,:url,:x_gtm,:id_sucursal);';
+        await conn.query2(SQL, data);
+    } catch (err) {
+        console.log("error:" + err);
+        throw err;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            conn.end();//cerrar conexion y regresarlo
+        }
+    }
+};
+var uuidv4 = function (id_empresa, tipoDocumento, id_usuario) {
+    return id_empresa + '-' + tipoDocumento + '-' + id_usuario + '-xxxxxxxx-xxxx-xxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+};
+
+$.getPaymentLink = async (data) => {
+    //recuperacion de link de pago
+    let conn = null;
+    try {
+        console.log("traer conexion");
+        conn = await objGestorBd.getPool_bases();
+        let SQL = 'SELECT id,id_empresa,id_transaccion,codigo,valor,es_activo,`url`,x_gtm,id_sucursal FROM boton_pago_intencion WHERE id_empresa=:id_empresa AND id_transaccion=:id_transaccion AND es_activo=1;';
+        return await conn.query2(SQL, data);
+    } catch (err) {
+        console.log("error:" + err);
+        throw err;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            conn.end();//cerrar conexion y regresarlo
+        }
+    }
+}
+$.getPaymentLink_codigo = async (data) => {
+    //recuperacion de link de pago
+    let conn = null;
+    try {
+        console.log("traer conexion");
+        conn = await objGestorBd.getPool_bases();
+        let SQL = 'SELECT id,id_empresa,id_transaccion,codigo,valor,es_activo,`url`,x_gtm,id_sucursal FROM boton_pago_intencion WHERE codigo=:codigo and es_activo=1;';
+        return await conn.query2(SQL, { codigo: data });
+    } catch (err) {
+        console.log("error:" + err);
+        throw err;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            conn.end();//cerrar conexion y regresarlo
+        }
+    }
+}
+$.deletePaymentLink = async (data) => {
+    //recuperacion de link de pago
+    let conn = null;
+    try {
+        console.log("traer conexion");
+        conn = await objGestorBd.getPool_bases();
+        let SQL = 'UPDATE boton_pago_intencion SET es_activo=0 WHERE id=:id;';
+        return await conn.query2(SQL, data);
+    } catch (err) {
+        console.log("error:" + err);
+        throw err;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            conn.end();//cerrar conexion y regresarlo
+        }
+    }
+}
+$.createPaymentLink = async (data) => {
+    try {
+        let data_ultimo = await $.getPaymentLink(data);
+        if (data_ultimo.length > 0) {
+            return { type: 1, url: data_ultimo[0].url };
+        }
+        let token = await $.getTokenEfimero(data.id_empresa);
+        //generar codigo
+        data.codigo = uuidv4(data.id_empresa, data.id_transaccion, data.id_sucursal).replaceAll("-", "");
+
+        let config = {
+            method: 'post',
+            timeout: 1000 * 4, // Wait for 5 seconds
+            url: "https://api-cuenti-pay.cuenti.co/api/v1/createPaymentLink?withSms=0",
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-Auth-Token-Empresa': data.id_empresa,
+                'Authorization': 'Bearer ' + token
+            },
+            data: {
+                "companyId": parseInt(data.id_empresa),
+                "branchId": parseInt(data.id_sucursal),
+                "name": "Pago factura " + data.n_factura,
+                "description": "Pago factura " + data.n_factura,
+                "orderId": data.codigo,
+                "active": true,
+                "country": data.country,//"CO", 
+                "currency": data.currency,//"COP",
+                "domain": "https://pagos-cuenti-pay.cuenti.co",
+                "responseUrl": data.responseUrl,
+                "confirmationUrl": "https://pci0e7bcb0.execute-api.us-west-2.amazonaws.com",
+                "webhookUrl": "https://integrador-cuenti-tienddi.cuenti.co/api/v1/integration-free/webhookCuentiPay/" + data.codigo,
+                "param1": "test",
+                "param2": "",
+                "param3": "",
+                "param4": "",
+                "total": data.valor,
+                "subtotal": data.valor,
+                "shipping": 0,
+                "discount": 0,
+                "taxes": 0,
+                "note": "test",
+                "customerData": {
+                    "fullName": data.nombre,
+                    "email": data.email,
+                    "phoneNumber": data.movil,
+                    "phoneNumberPrefix": "+57",
+                    "legalId": "test",
+                    "legalIdType": "test"
+                }
+            }
+        };
+        const resp = await axios(config);
+        data.url = resp.data.url;
+        await $.registrar_intencion_pago_cuenti_pay(data);
+        return { type: 1, url: resp.data.url };
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+    }
+};
+
+$.getConfigurations = async (data) => {
+    try {
+        let token = await $.getTokenEfimero(data.id_empresa);
+        let config = {
+            method: 'get',
+            timeout: 1000 * 4, // Wait for 5 seconds
+            url: "https://admin-cuenti-pay.cuenti.co/api/v1/information/getConfigurations",
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-Auth-Token-Empresa': data.id_empresa,
+                'x-auth-id-sucursal': data.id_sucursal,
+                'Authorization': 'Bearer ' + token
+            }
+        };
+        const resp = await axios(config);
+
+        return { type: 1, data: resp.data };
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+    }
+};
+$.getTokenEfimero = async (id_company) => {
+    try {
+        let api = await $.get_token_api(id_company);
+        var config = {
+            method: 'post',
+            timeout: 1000 * 4, // Wait for 5 seconds
+            url: "https://generate-token-cuenti.cuenti.co/generate_token",
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            data: {
+                "pass": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5OTM5LTIwMjIwMjE2MDAwNzAzYTQ0YWFiLTZiMzktNDk3MC1hZTQ0LTZjOThkYmIzN2QxZSIsImlhdCI6MTY2MTUzMzY2NiwiZXhwIjpudWxsfQ.FiWeGRxbGC0h2PkS5eUcmxoPib0xpVR-IHEWw5-1Rms",
+                "user": "cuenti",
+                "token": api
+            }
+        };
+        const resp = await axios(config);
+        return resp.data.token;
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+    }
+};
+$.checkPayment = async (codigo, id_empresa, id_sucursal) => {
+    try {
+        let token = await $.getTokenEfimero(id_empresa);
+        let config = {
+            method: 'get',
+            timeout: 1000 * 4, // Wait for 5 seconds
+            url: "https://api-cuenti-pay.cuenti.co/api/v1/checkPayment?ref=" + codigo + "&companyId=" + id_empresa + "&branchId=" + id_sucursal + "&isOrderId=1",
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-Auth-Token-Empresa': id_empresa,
+                'x-auth-id-sucursal': id_sucursal,
+                'Authorization': 'Bearer ' + token
+            }
+        };
+        const resp = await axios(config);
+
+        return resp.data;
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+    }
+};
+$.activarPagos = async (data) => {
+    try {
+        let token = await $.getTokenEfimero(data.id_empresa);
+        let lstPagos_pendientes = await $.getPaymentLink(data);
+        let lst_configuraciones;
+        if (lstPagos_pendientes.length > 0) {
+            //configuraciones
+            lst_configuraciones = await $.getConfigurations({ id_empresa: data.id_empresa, id_sucursal: lstPagos_pendientes[0].id_sucursal });
+            lst_configuraciones = lst_configuraciones.data.data;
+        }
+        for (let row of lstPagos_pendientes) {
+            //validar cada referencia si esta ya esta pagada
+            let r = await validacionPagosCuentiPay(token, lst_configuraciones, row);
+            if (r.type == 1 || r.type == 2) {
+                //desactivar intenciones
+                await $.deletePaymentLink({ id: row.id });
+            }
+        }
+        return { type: 1 };
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+    }
+};
+let validacionPagosCuentiPay = async function (token, lst_configuraciones, row) {
+    //validar cada referencia si esta ya esta pagada
+    let r_pago = await $.checkPayment(row.codigo, row.id_empresa, row.id_sucursal);
+    if (r_pago.status == 'success') {
+        if (r_pago.payment.payload_extra.status_payment == 'APPROVED') {
+            //buscar datos de de payment_gateways
+            let bank_id = 1;
+            let payment_medium_id = 1;
+            let cost_center_id = 1;
+            let employee_id = 1;
+            for (let conf of lst_configuraciones.payment_gateways) {
+                if (conf.payment_gateway.code == r_pago.payment.payload_extra.gateway) {
+                    bank_id = conf.bank_id;
+                    payment_medium_id = conf.payment_method_id;
+                    cost_center_id = conf.cost_center_id;
+                    employee_id = conf.employee_id;
+                    break;
+                }
+            }
+            try {
+                let url = "http://solo-restaurantes.interna.cuenti.com:9855/jServerj4ErpPro/com/j4ErpPro/server/api_sin_token/agregarPagoTransacionCuentiPay2";
+                if (process.env.environment_data_base === 'dev') {
+                    url = "http://localhost:8084/jServerj4ErpPro/com/j4ErpPro/server/api_sin_token/agregarPagoTransacionCuentiPay2";
+                }
+                //registramos el recibo de caja
+                let config = {
+                    method: 'post',
+                    timeout: 1000 * 4, // Wait for 5 seconds
+                    url: url,
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-Auth-Token-Empresa': row.id_empresa,
+                        'x-auth-id-sucursal': row.id_sucursal,
+                        'Authorization': 'Bearer ' + token
+                    },
+                    data: {
+                        "id_empresa": row.id_empresa,
+                        "id_sucursal": row.id_sucursal,
+                        "transaction_id": r_pago.payment.payload_extra.transaction_id,
+                        "id": r_pago.payment.payload_extra.id,
+                        "id_transacion_cuenti": row.id_transaccion,
+                        "bank_id": 1,
+                        "payment_medium_id": 1,
+                        "employee_id": 1,
+                        "cost_center_id": 1,
+                        "amount": parseFloat(r_pago.payment.payload_extra.amount),
+                        "x_gtm": row.x_gtm,
+                        gateway: r_pago.payment.payload_extra.gateway
+                    }
+                };
+                const resp = await axios(config);
+                console.log(resp.data);
+                return { type: 1, status: 200, message: "ok" }
+            } catch (error) {
+                if (error.response.status == 452) {
+                    return { type: 2, status: error.response.status, message: error.response.data.message }
+                } else {
+                    return { type: 0, status: error.response.status, message: error.response.data.message }
+                }
+            }
+        }
+    }
+}
+
+$.webhookCuentiPay = async (_data, codigo) => {
+    try {
+        console.log(_data)
+        console.log("codigo:" + codigo)
+        let data = await $.getPaymentLink_codigo(codigo);
+        if (data.length > 0) {
+            data = data[0];
+            let token = await $.getTokenEfimero(data.id_empresa);
+            let lstPagos_pendientes = [data];
+            let lst_configuraciones;
+            if (lstPagos_pendientes.length > 0) {
+                //configuraciones
+                lst_configuraciones = await $.getConfigurations({ id_empresa: data.id_empresa, id_sucursal: lstPagos_pendientes[0].id_sucursal });
+                lst_configuraciones = lst_configuraciones.data.data;
+            }
+            //validar cada referencia si esta ya esta pagada
+            let r = await validacionPagosCuentiPay(token, lst_configuraciones, lstPagos_pendientes[0]);
+            if (r.type == 1 || r.type == 2) {
+                //desactivar intenciones
+                await $.deletePaymentLink({ id: lstPagos_pendientes[0].id });
+                return { type: 1 };
+            } else {
+                return r;
+            }
+        } else {
+            return { type: 1 };
+        }
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+    }
+};
 // Exportamos
 module.exports = $;
