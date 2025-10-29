@@ -183,5 +183,34 @@ router.post('/webhookCuentiPay/:codigo', async function (req, res) {
         fileManager.managerErrorApi(res, e);
     }
 });
+router.get('/get_conf_modulos_sucursal/:clave/:id_company/:id_sucursal', async function (req, res) {
+    try {
+        if (req.params.clave !== "jdoaosdoieokoi4oi4o34o234sd485484DWjhhcv5897444343434===") {
+            res.json({
+                type: 0,
+                message: 'clave mala',
+            })
+        }
+        let r = await objIntegratorTienddiBl.get_conf_modulos_sucursal(req.params.id_company, req.params.id_sucursal);
+        res.json(r);
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
+
+router.get('/get_conf_modulos_sucursal_generarQr_url_dian/:clave/:id_company/:id_sucursal', async function (req, res) {
+    try {
+        if (req.params.clave !== "jdoaosdoieokoi4oi4o34o234sd485484DWjhhcv5897444343434===") {
+            res.json({
+                type: 0,
+                message: 'clave mala',
+            })
+        }
+        let r = await objIntegratorTienddiBl.get_conf_modulos_sucursal_generarQr_url_dian(req.params.id_company, req.params.id_sucursal);
+        res.json(r);
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
 // Exportamos las funciones en un objeto
 module.exports = router;

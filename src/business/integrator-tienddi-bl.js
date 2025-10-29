@@ -1269,5 +1269,53 @@ $.webhookCuentiPay = async (_data, codigo) => {
     } finally {
     }
 };
+
+$.get_conf_modulos_sucursal = async (id_company, id_sucursal) => {
+    let cache = "cache_conf_modulos_sucursal_" + id_company + "_" + id_sucursal;
+    let data_cache = await $.getFromCache(cache);
+    let r = null;
+    if (data_cache === null) {
+        let conn = null;
+        try {
+            conn = await objGestorBd.getConnectionEmpresa(id_company);
+            let SQL = 'SELECT conf_modulos FROM adm_sucursal WHERE  id_sucursal=:id_sucursal;';
+            r = await conn.query2(SQL, { id_sucursal: id_sucursal });
+            return r[0].conf_modulos;
+        } catch (error) {
+            console.error(error);
+            throw error;
+        } finally {
+            if (conn !== null) {
+                console.log("cierre conexion " + conn.threadId);
+                // conn.end();
+                conn.release(); //release to pool
+            }
+            await $.storeInCache(cache, r[0].conf_modulos, ttlInSeconds = 60 * 60); //cache por 1 hora
+        }
+    } else {
+        return data_cache;
+    }
+};
+$.get_conf_modulos_sucursal_generarQr_url_dian = async (id_company, id_sucursal) => {
+    let conf_modulos = await $.get_conf_modulos_sucursal(id_company, id_sucursal);
+    let generarQr_url_dian = false;
+    if (conf_modulos !== null && conf_modulos !== undefined) {
+        try {
+            conf_modulos = JSON.parse(conf_modulos);
+            if (conf_modulos.generarQr_url_dian !== undefined && conf_modulos.generarQr_url_dian !== null) {
+                generarQr_url_dian = conf_modulos.generarQr_url_dian;
+            };
+        } catch (error) {
+            console.error(error);
+        }
+    }
+    if (generarQr_url_dian == 0) {
+        generarQr_url_dian = false;
+    }
+    if (generarQr_url_dian == 1) {
+        generarQr_url_dian = true;
+    }
+    return { type: 1, generarQr_url_dian: generarQr_url_dian };
+};
 // Exportamos
 module.exports = $;
