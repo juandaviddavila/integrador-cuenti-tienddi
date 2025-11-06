@@ -38,5 +38,14 @@ router.post('/get_url_store_cuenti', async function (req, res) {
         fileManager.managerErrorApi(res, e);
     }
 });
+
+router.post('/webhook_parking/:id_sucursal', async function (req, res) {
+    try {
+        let r = await objIntegratorTienddiBl.webhook_parking(req.headers['id-company'], req.params.id_sucursal);
+        res.json(r);
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
 // Exportamos las funciones en un objeto
 module.exports = router;

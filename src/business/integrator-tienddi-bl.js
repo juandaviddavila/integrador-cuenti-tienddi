@@ -1317,5 +1317,29 @@ $.get_conf_modulos_sucursal_generarQr_url_dian = async (id_company, id_sucursal)
     }
     return { type: 1, generarQr_url_dian: generarQr_url_dian };
 };
+
+$.webhook_parking = async (id_company, id_sucursal) => {
+    let conn = null;
+    try {
+        // conn = await objGestorBd.getConnectionEmpresa(id_company);
+        // let SQlCategoria = objGestorSQL.getSqlNombre("integrador_tienddi", "list_categorias");
+        // await conn.query2(SQlCategoria, {});
+
+        return {
+            "externalId": "cuenti-51814955",
+            "openBarrier": true
+        };
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            // conn.end();
+            conn.release(); //release to pool
+        }
+    }
+};
+
 // Exportamos
 module.exports = $;
