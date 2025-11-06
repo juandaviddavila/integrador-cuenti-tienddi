@@ -1324,7 +1324,10 @@ $.webhook_parking = async (id_company, id_sucursal) => {
         // conn = await objGestorBd.getConnectionEmpresa(id_company);
         // let SQlCategoria = objGestorSQL.getSqlNombre("integrador_tienddi", "list_categorias");
         // await conn.query2(SQlCategoria, {});
-
+        //paso 1 si es una entrada registrar la entrada "doorway": "entrance",
+        //validar que no exista ya una entrda y que no se repita ver si el servicio ya valida esto
+        //paso 2 si es una salida "doorway": "leave", validar si ya tiene salida
+        //paso 3 ver si cuando entra carro en cuenti se vee
         return {
             "externalId": "cuenti-51814955",
             "openBarrier": true
