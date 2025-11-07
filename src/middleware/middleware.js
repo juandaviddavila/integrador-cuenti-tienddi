@@ -11,7 +11,12 @@ const { Base64 } = require('js-base64');
 const middleware = Router();
 const axios = require('axios');
 middleware.use(async function (req, res, next) {
-
+    if (req.path.indexOf("webhook_parking") >= 0) {
+        const parts = req.originalUrl.split('/');
+        const id = parts[5]; // índice 5 -> /api(0) v1(1) integration(2) webhook_parking(3) 8765(4) 1(5) 1(6)
+        console.log(id); // 8765
+        req.headers['id-company'] = id;
+    }
     try {
         var config = {
             method: 'post',
