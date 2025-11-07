@@ -5,6 +5,7 @@ const objGestorBd = require('../helpers/gestorBd');
 const objGestorSQL = require('../helpers/gestorSQL');
 const axios = require('axios');
 const fileManager = require('utilities_cuenti/vendor/fileManager');
+const crypto = require('crypto');
 let $ = {};
 
 let redondeo = function (numero, decimales) {
@@ -1318,12 +1319,176 @@ $.get_conf_modulos_sucursal_generarQr_url_dian = async (id_company, id_sucursal)
     return { type: 1, generarQr_url_dian: generarQr_url_dian };
 };
 
-$.webhook_parking = async (id_company, id_sucursal) => {
+function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min)) + min;
+}
+
+let generarMarcaUnica = function (id_empresa, id_usuario) {
+    return id_empresa.toString() + id_usuario.toString() + new Date().getYear().toString() + (new Date().getMonth() + 1).toString() + new Date().getDate().toString() +
+        new Date().getHours().toString() + new Date().getMinutes().toString() +
+        new Date().getSeconds().toString() + new Date().getMilliseconds().toString()
+        + getRandomInt(1, 9999).toString();
+};
+// Alfabetos
+const __B62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+const __B64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+const __B6432 = "abcdefghijklmnopqrstuvwxyz0123456789";
+
+// Muestreo sin sesgo usando Web Crypto
+function randomBase(alphabet, len) {
+    const base = alphabet.length;
+    const out = [];
+    const max = 256 - (256 % base); // rechazo para evitar sesgo
+    const buf = new Uint8Array(len * 2);
+    let i = buf.length; // fuerza refill al inicio
+
+    while (out.length < len) {
+        if (i >= buf.length) {
+            crypto.getRandomValues(buf);
+            i = 0;
+        }
+        const v = buf[i++];
+        if (v < max)
+            out.push(alphabet[v % base]);
+    }
+    return out.join('');
+}
+
+
+function uuidv4_corto(id_empresa, tipoDocumento, id_usuario, {
+    len = 6, // 10 chars ≈ 60 bits
+    alphabet = __B6432, // o B64URL
+    includeSeconds = false, // false => 6 hex; true => 8 hex
+    date = new Date()       // usa hora local
+} = {}) {
+    const sufijo = randomBase(alphabet, len);
+    //const tHex = secondsHexToday(date); // 24 o 32 bits
+    //return `${id_empresa}-${tipoDocumento}-${id_usuario}-${sufijo}-${tHex}`;
+    return `${id_empresa}-${tipoDocumento}-${id_usuario}-${sufijo}-${getRandomInt(1, 9999).toString()}`;
+}
+let esPlacaMoto = function (placa = '') {
+    placa = placa.trim().toUpperCase();
+
+    // motos: 3 letras + 2 números  (ej: ABC12)
+    // o     : 3 letras + 2 números + 1 letra (ej: ABC12A)
+    return /^[A-Z]{3}\d{2}[A-Z]?$/.test(placa);
+};
+
+
+$.registrarIngresovehiculo = async (id_company, token, id_sucursal, id_empleado, data) => {
+    try {
+        let url = "http://balancer-1.interna.cuenti.com/jServerj4ErpPro/";
+        if (process.env.environment_data_base === 'dev') {
+            url = "http://localhost:8084/jServerj4ErpPro/";
+        }
+        let codigo_unico = generarMarcaUnica(id_company, id_empleado);
+        let codeUnicoQr = uuidv4_corto(id_company, 10, id_empleado,
+            {
+                len: 8, // 10 chars ≈ 60 bits
+                alphabet: __B6432, // o B64URL
+                includeSeconds: true, // false => 6 hex; true => 8 hex
+                date: new Date()       // usa hora local
+            }
+        );
+        let direccion = "A";//A es si es un carro, M es moto vamos a identificar si es moto ejemplo placa moto JQX73E
+        if (esPlacaMoto(data.plate)) {
+            direccion = "M";
+        }
+        let config = {
+            method: 'POST',
+            timeout: 1000 * 10, // Wait for 5 seconds
+            url: url + "com/j4ErpPro/server/transacion/grabardocumentosTransacion",
+            headers: {
+                'Content-Type': 'application/json',
+                'x-auth-token-empresa': id_company,
+                'x-gtm': 'GMT-0500',
+                'Authorization': token
+            }, data: [{ "descuento_global": 0, "bodega_destino": null, "activar_factura_electronica_pos": 0, "id_canal": 1, "domicilio": 0, "orden_compra": null, "id_pedido_tienda": null, "id_banco_tienda": null, "pago_relizado_tienda": 0, "total_estampilla": 0, "total_impoconsumo": 0, "turno": null, "tiempo_aprox_prestamo": null, "total_gastos_orden_servicios": null, "marca": null, "retenciones": [], "id_cliente_contacto": null, "codeUnicoQr": codeUnicoQr, "encabezado": "", "propinaManual": false, "iva_sobre_utilidad": false, "porAdmi": 0, "porImprovis": 0, "porUtilidad": 0, "editar_transacion": false, "id_lista_precio": null, "json_fecha": null, "firmaEmail": "", "mensajeMail": "", "anticipos": [], "esTransacionParqueadero": 0, "compraRemision": "0", "propina": 0, "email": "", "empresa": "", "correoEnvia": "", "descuento": 0, "tipoDocumento": 10, "nFactura": "", "id_cliente": -1, "id_sucursal": id_sucursal, "id_bodega": 0, "id_documento": null, "id_vendedor": null, "id_empleado": id_empleado, "id_consecutivo": 0, "nota": "", "total_neto": 0, "total_impuestos": 0, "total_sin_impuestos": 0, "objClienteMini": { "nombre_cliente": data.plate, "identificacion": data.plate, "telefono1": "", "email1": "", "id": 0, "direccion": direccion, "id_tipo_persona": 1 }, "numero_mesa": null, "id_mesa": null, "es_valet_parking": 0, "codigo_unico": codigo_unico }]
+        };
+        const resp = await axios(config);
+
+        return resp.data[0];
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+    }
+};
+
+$.validarSarlidaVh = async (id_company, id_sucursal, placa) => {
     let conn = null;
     try {
+        conn = await objGestorBd.getConnectionEmpresa(id_company);
+        let SQL = 'SELECT id_transacion_ingreso,id_transacion FROM transacion_ingreso_parqueadero p WHERE p.es_activo=1 AND p.id_sucursal=:id_sucursal and placa=:placa;';
+        let r = await conn.query2(SQL, { id_sucursal: id_sucursal, placa });
+        if (r.length > 0) {
+            //si encuentra no podemos dejar salir vh
+            if (r[0].id_transacion === null) {
+                return { type: 0, retorno: 'F-' + r[0].id_transacion_ingreso };
+            } else {
+                return { type: 0, retorno: 'I-' + r[0].id_transacion };
+            }
+        } else {
+            //podemos dejar sasir el vh
+            SQL = `SELECT id_transacion_ingreso,id_transacion,fecha_salida FROM transacion_ingreso_parqueadero p WHERE fecha_salida IS NOT NULL AND placa=:placa
+            ORDER BY fecha_salida DESC LIMIT 1 ;`;
+            r = await conn.query2(SQL, { id_sucursal: id_sucursal, placa });
+            if (r.length > 0) {
+                if (r[0].id_transacion === null) {
+                    return { type: 1, retorno: 'F-' + r[0].id_transacion_ingreso };
+                } else {
+                    return { type: 1, retorno: 'I-' + r[0].id_transacion };
+                }
+            } else {
+                //si encuentra no podemos dejar salir vh
+                return { type: 0, retorno: 'F-' };
+            }
+        }
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            // conn.end();
+            conn.release(); //release to pool
+        }
+    }
+};
+$.webhook_parking = async (id_company, token, id_sucursal, id_empleado, data) => {
+    try {
+        data.plate = data.plate.trim().toUpperCase();
+        //paso 1 si es una entrada registrar la entrada "doorway": "entrance", salida "doorway": "leave",
+        console.log(token);
+        if (data.doorway === "entrance") {
+            let r = await $.registrarIngresovehiculo(id_company, token, id_sucursal, id_empleado, data);
+            if (r.type == 1) {
+                return {
+                    "externalId": r.retorno,
+                    "openBarrier": true
+                };
+            } else {
+                throw new Error("Error al registrar ingreso de vehículo: " + JSON.stringify(r));
+            }
+        } else {
+            //salida de vh validar pago leave
+            let r = await $.validarSarlidaVh(id_company, id_sucursal, data.plate);
+            if (r.type == 1) {
+                return {
+                    "externalId": r.retorno,
+                    "openBarrier": true
+                };
+            } else {
+                return {
+                    "externalId": r.retorno,
+                    "openBarrier": false
+                };
+            }
+        }
         // conn = await objGestorBd.getConnectionEmpresa(id_company);
         // let SQlCategoria = objGestorSQL.getSqlNombre("integrador_tienddi", "list_categorias");
         // await conn.query2(SQlCategoria, {});
+        //paso 0  manejo de cola
         //paso 1 si es una entrada registrar la entrada "doorway": "entrance",
         //validar que no exista ya una entrda y que no se repita ver si el servicio ya valida esto
         //paso 2 si es una salida "doorway": "leave", validar si ya tiene salida
@@ -1335,12 +1500,6 @@ $.webhook_parking = async (id_company, id_sucursal) => {
     } catch (error) {
         console.error(error);
         throw error;
-    } finally {
-        if (conn !== null) {
-            console.log("cierre conexion " + conn.threadId);
-            // conn.end();
-            conn.release(); //release to pool
-        }
     }
 };
 
