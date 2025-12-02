@@ -212,5 +212,22 @@ router.get('/get_conf_modulos_sucursal_generarQr_url_dian/:clave/:id_company/:id
         fileManager.managerErrorApi(res, e);
     }
 });
+
+router.get('/get-data-company/:id_empresa/:id_sucursal', async function (req, res) {
+    try {
+        req.params.fecha1 = req.params.fecha1 + ' 00:00:00';
+        req.params.fecha2 = req.params.fecha2 + ' 23:59:59';
+        if (diferenciaMayorASeisMeses(req.params.fecha1, req.params.fecha2)) {
+            res.json({
+                type: 0,
+                message: 'La diferencia entre las fechas es mayor a seis meses',
+            })
+        }
+        let r = await objIntegratorTienddiBl.get_data_company(req.params.id_empresa, req.params.id_sucursal);
+        res.json(r);
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
 // Exportamos las funciones en un objeto
 module.exports = router;

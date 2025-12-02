@@ -1214,10 +1214,10 @@ let validacionPagosCuentiPay = async function (token, lst_configuraciones, row) 
                         "transaction_id": r_pago.payment.payload_extra.transaction_id,
                         "id": r_pago.payment.payload_extra.id,
                         "id_transacion_cuenti": row.id_transaccion,
-                        "bank_id": 1,
-                        "payment_medium_id": 1,
-                        "employee_id": 1,
-                        "cost_center_id": 1,
+                        "bank_id": bank_id,
+                        "payment_medium_id": payment_medium_id,
+                        "employee_id": employee_id,
+                        "cost_center_id": cost_center_id,
                         "amount": parseFloat(r_pago.payment.payload_extra.amount),
                         "x_gtm": row.x_gtm,
                         gateway: r_pago.payment.payload_extra.gateway
@@ -1502,6 +1502,54 @@ $.webhook_parking = async (id_company, token, id_sucursal, id_empleado, data) =>
         throw error;
     }
 };
-
+$.get_data_company = async (id_empresa, id_sucursal) => {
+    let conn = null;
+    try {
+        console.log("traer conexion");
+        conn = await objGestorBd.getPool_bases();
+        let SQL = 'SELECT nombre_empresa,nit_empresa,id_empresa,es_multi_empresa,alias FROM empresas WHERE id_empresa=:id_empresa';
+        let data_base = (await conn.query2(SQL, { id_empresa: id_empresa }))[0];
+        if (data_base.es_multi_empresa == 1) {
+            SQL = 'SELECT nombre_empresa,nit_empresa,id_empresa,es_multi_empresa,id_empresa_padre,alias FROM empresas WHERE id_empresa_padre=:id_empresa AND id_sucursal=:id_sucursal;';
+            let data_base_sucursal = await conn.query2(SQL, { id_empresa: id_empresa, id_sucursal: id_sucursal });
+            if (data_base_sucursal.length > 0) {
+                if (data_base_sucursal[0].nombre_empresa != null && data_base_sucursal[0].nit_empresa !== null) {
+                    if (data_base_sucursal[0].nombre_empresa.toString().trim().length > 0 && data_base_sucursal[0].nit_empresa.toString().trim().length > 0) {
+                        data_base = data_base_sucursal[0];
+                    }
+                }
+            }
+        }
+        //capturara imagen
+        SQL = "SELECT id_imagen,nombre,bits,tamano,formato,ext1,ext2,id_empresa,id_sucursal FROM imagenes WHERE id_sucursal=:id_sucursal AND id_empresa=:id_empresa;";
+        let logo = "";
+        let queryForList2 = await conn.query2(SQL, { id_empresa: id_empresa, id_sucursal: id_sucursal });
+        if (queryForList2.length === 0) {
+            SQL = "SELECT COUNT(*) as total FROM empresas e INNER JOIN imagenes i ON(e.id_imagen=i.id_imagen) WHERE e.id_empresa=:id_empresa LIMIT 1;";
+            let countResult = await conn.query2(SQL, { id_empresa: id_empresa });
+            if (countResult[0].total > 0) {
+                SQL = "SELECT i.id_imagen,formato FROM empresas e INNER JOIN imagenes i ON(e.id_imagen=i.id_imagen) WHERE e.id_empresa=:id_empresa LIMIT 1;";
+                let queryForList = await conn.query2(SQL, { id_empresa: id_empresa });
+                logo = queryForList[0].id_imagen + ";" + (queryForList[0].formato == null ? "" : queryForList[0].formato.toString());
+            } else {
+                logo = "";
+            }
+        } else {
+            logo = id_empresa + "_" + id_sucursal + ";" + queryForList2[0].formato.toString();
+        }
+        if (logo != "") {
+            data_base.logo = `https://s3-us-west-2.amazonaws.com/documentosj4/${id_empresa}/imagenes_empresa/${logo.split(";")[0]}.${logo.split(";")[1]}`;
+        }
+        return data_base;
+    } catch (err) {
+        console.log("error:" + err);
+        throw err;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            conn.end();//cerrar conexion y regresarlo
+        }
+    }
+};
 // Exportamos
 module.exports = $;
