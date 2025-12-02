@@ -1551,5 +1551,42 @@ $.get_data_company = async (id_empresa, id_sucursal) => {
         }
     }
 };
+
+$.pre_activar_plan = async (id_empresa, id_transaccion, id_plan_empresa) => {
+    let conn = null;
+    try {
+        console.log("traer conexion");
+        conn = await objGestorBd.getPool_bases();
+        //Paso 1 valido que si en la tabla empresa_intento_pago_pre_activacion ya existe un registro hace 3 dias termino aqui
+        let cont = await conn.query2("SELECT COUNT(*) FROM empresa_intento_pago_pre_activacion WHERE id_empresa=1  AND fecha_registro >= DATE_SUB(CURDATE(), INTERVAL 10 DAY);", { id_empresa: id_empresa });
+        if (cont[0]['COUNT(*)'] > 0) {
+            return { type: 1, message: "Ya existe un intento de activacion en los ultimos 10 dias" };
+        } else {
+            //Paso 2 registro en la tabla empresa_intento_pago_pre_activacion
+            await conn.query2("INSERT INTO empresa_intento_pago_pre_activacion(id_empresa,fecha_registro,id_transaccion)VALUES(:id_empresa,NOW(),:id_transaccion);", { id_empresa: id_empresa, id_transaccion: id_transaccion });
+            //Paso 3 registro  UPDATE plan_empresa SET fecha_vencimiento=:fecha_vencimiento WHERE id_empresa=:id_empresa and es_activo=1;
+            let lstPlan = await conn.query2("SELECT id_plan_empresa FROM plan_empresa WHERE es_activo=1 AND id_empresa=:id_empresa;", { id_empresa: id_empresa });
+            let fecha_vencimiento = new Date();
+            fecha_vencimiento.setDate(fecha_vencimiento.getDate() + 1); //sumar 1 dias
+            if (lstPlan.length > 0) {
+                let id_plan_empresa_activo = lstPlan[0].id_plan_empresa;
+                await conn.query2("UPDATE plan_empresa SET fecha_vencimiento=:fecha_vencimiento WHERE id_plan_empresa=:id_plan_empresa_activo;", { fecha_vencimiento: fecha_vencimiento, id_plan_empresa_activo: id_plan_empresa_activo });
+            } else {
+                //activo demo 1 dia
+                await conn.query2("UPDATE aplicaciones_empresa SET fecha_vencimiento=:fecha_vencimiento WHERE id_empresa=:id_empresa;",
+                    { fecha_vencimiento: fecha_vencimiento, id_empresa: id_empresa });
+            };
+            return { type: 1, message: " Se entrego 1 dia" };
+        }
+    } catch (err) {
+        console.log("error:" + err);
+        throw err;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            conn.end();//cerrar conexion y regresarlo
+        }
+    }
+};
 // Exportamos
 module.exports = $;

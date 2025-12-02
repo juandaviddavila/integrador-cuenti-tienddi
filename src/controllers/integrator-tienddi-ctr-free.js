@@ -229,5 +229,13 @@ router.get('/get-data-company/:id_empresa/:id_sucursal', async function (req, re
         fileManager.managerErrorApi(res, e);
     }
 });
+router.post('/pre_activar_plan', async function (req, res) {
+    try {
+        let r = await objIntegratorTienddiBl.pre_activar_plan(req.body.id_empresa, req.body.id_transaccion);
+        res.json(r);
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
 // Exportamos las funciones en un objeto
 module.exports = router;
