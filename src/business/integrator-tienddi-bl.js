@@ -1552,7 +1552,7 @@ $.get_data_company = async (id_empresa, id_sucursal) => {
     }
 };
 
-$.pre_activar_plan = async (id_empresa, id_transaccion, id_plan_empresa) => {
+$.pre_activar_plan = async (id_empresa, id_transaccion) => {
     let conn = null;
     try {
         console.log("traer conexion");
@@ -1565,12 +1565,16 @@ $.pre_activar_plan = async (id_empresa, id_transaccion, id_plan_empresa) => {
             //Paso 2 registro en la tabla empresa_intento_pago_pre_activacion
             await conn.query2("INSERT INTO empresa_intento_pago_pre_activacion(id_empresa,fecha_registro,id_transaccion)VALUES(:id_empresa,NOW(),:id_transaccion);", { id_empresa: id_empresa, id_transaccion: id_transaccion });
             //Paso 3 registro  UPDATE plan_empresa SET fecha_vencimiento=:fecha_vencimiento WHERE id_empresa=:id_empresa and es_activo=1;
-            let lstPlan = await conn.query2("SELECT id_plan_empresa FROM plan_empresa WHERE es_activo=1 AND id_empresa=:id_empresa;", { id_empresa: id_empresa });
+            let lstPlan = await conn.query2("SELECT id_plan_empresa,fecha_vencimiento FROM plan_empresa WHERE es_activo=1 AND id_empresa=:id_empresa;", { id_empresa: id_empresa });
             let fecha_vencimiento = new Date();
             fecha_vencimiento.setDate(fecha_vencimiento.getDate() + 1); //sumar 1 dias
             if (lstPlan.length > 0) {
                 let id_plan_empresa_activo = lstPlan[0].id_plan_empresa;
-                await conn.query2("UPDATE plan_empresa SET fecha_vencimiento=:fecha_vencimiento WHERE id_plan_empresa=:id_plan_empresa_activo;", { fecha_vencimiento: fecha_vencimiento, id_plan_empresa_activo: id_plan_empresa_activo });
+                //si fecha_vencimiento es menor que hoy sumo 1 dia a hoy
+                let fecha_vencimiento_plan = new Date(lstPlan[0].fecha_vencimiento);
+                if (fecha_vencimiento_plan < fecha_vencimiento) {
+                    await conn.query2("UPDATE plan_empresa SET fecha_vencimiento=:fecha_vencimiento WHERE id_plan_empresa=:id_plan_empresa_activo;", { fecha_vencimiento: fecha_vencimiento, id_plan_empresa_activo: id_plan_empresa_activo });
+                }
             } else {
                 //activo demo 1 dia
                 await conn.query2("UPDATE aplicaciones_empresa SET fecha_vencimiento=:fecha_vencimiento WHERE id_empresa=:id_empresa;",
