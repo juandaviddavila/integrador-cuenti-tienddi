@@ -1417,13 +1417,112 @@ $.registrarIngresovehiculo = async (id_company, token, id_sucursal, id_empleado,
 
 $.validarSarlidaVh = async (id_company, id_sucursal, placa) => {
     let conn = null;
+    let min_gratis = 0;
+    let placa_excepcion = false;
     try {
+        //validar si esta en tiempo de gracias
+        let conf_modulos = await $.get_conf_modulos_sucursal(id_company, id_sucursal);
+        if (conf_modulos !== null && conf_modulos !== undefined) {
+            try {
+                conf_modulos = JSON.parse(conf_modulos);
+                //validar si la placa esta en la lista de excepciones
+                try {
+                    if (conf_modulos.placas_excepciones !== undefined && conf_modulos.placas_excepciones !== null) {
+                        for (let i = 0; i < conf_modulos.placas_excepciones.length; i++) {
+                            if (conf_modulos.placas_excepciones[i].p.trim().toUpperCase() == placa.trim().toUpperCase()) {
+                                placa_excepcion = true;
+                                //return { type: 1, retorno: 'I-' + 0 };
+                                break;
+                            }
+                            if (i > 100) {
+                                break;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+                //fin validar si la placa esta en la lista de excepciones
+
+                if (conf_modulos.reglas_gratis !== undefined && conf_modulos.reglas_gratis !== null) {
+                    try {
+                        // Obtener día actual en formato de la regla: D, L, M, MI, J, V, S
+                        const diasReglas = ["D", "L", "M", "MI", "J", "V", "S"];
+                        const diasSemanaMoment = [0, 1, 2, 3, 4, 5, 6]; // Domingo a Sábado
+                        let hoy = moment();
+                        let indexDia = hoy.day(); // Domingo: 0, Lunes:1,...
+                        let diaActual = diasReglas[indexDia];
+
+                        // Buscar la regla del día actual
+                        let reglaDia = null;
+                        if (Array.isArray(conf_modulos.reglas_gratis)) {
+                            reglaDia = conf_modulos.reglas_gratis.find(r => r.dia === diaActual && r.aplica === true);
+                        }
+
+                        if (reglaDia) {
+                            // Obtener hora actual en minutos desde medianoche
+                            let ahora = hoy.hours() * 60 + hoy.minutes();
+                            let horaInicio = parseInt(reglaDia.hora_inicio_gratis) || 0;
+                            let horaFin = parseInt(reglaDia.hora_fin_gratis) || 0;
+                            // Si la franja de horas es 0-0 se asume todo el día
+                            let enRango = false;
+                            if (horaInicio === 0 && horaFin === 0) {
+                                enRango = true;
+                            } else {
+                                // hora_inicio_gratis y hora_fin_gratis están en formato hora decimal (7 = 7:00am, 16 = 16:00, etc.)
+                                horaInicio = horaInicio * 60; // a minutos
+                                horaFin = horaFin * 60; // a minutos
+                                if (ahora >= horaInicio && ahora <= horaFin) {
+                                    enRango = true;
+                                }
+                            }
+                            if (enRango) {
+                                // cumple con la regla del día y hora
+                                // compli
+                                // Puedes agregar tu lógica de salida aquí
+                                min_gratis = reglaDia.min_gratis;
+                            } else {
+                                // no cumple el rango horario
+                                // no cumple
+                            }
+                        } else {
+                            // no existe regla hoy o "aplica" es false
+                            // no cumple
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+                //validar Reglas de precios y horarios
+                //fin validar Reglas de precios y horarios
+            } catch (error) {
+                console.error(error);
+            }
+        }
         conn = await objGestorBd.getConnectionEmpresa(id_company);
         let SQL = 'SELECT id_transacion_ingreso,id_transacion FROM transacion_ingreso_parqueadero p WHERE p.es_activo=1 AND p.id_sucursal=:id_sucursal and placa=:placa;';
         let r = await conn.query2(SQL, { id_sucursal: id_sucursal, placa });
         if (r.length > 0) {
             //si encuentra no podemos dejar salir vh
             if (r[0].id_transacion === null) {
+                //no tiene transacion pero validemos tiempo de gracias
+                if (min_gratis > 0) {
+                    //validamos en la base de datos si hora de igreso es menor a 15 min
+                    let SQL = 'SELECT fecha_ingreso FROM transacion_ingreso_parqueadero WHERE id_transacion_ingreso=:id_transacion_ingreso AND fecha_ingreso >= DATE_SUB(NOW(), INTERVAL :min_gratis MINUTE);';
+                    let r2 = await conn.query2(SQL, { id_transacion_ingreso: r[0].id_transacion_ingreso, min_gratis: min_gratis });
+                    if (r2.length > 0) {
+                        //registramos la salida sin factura
+                        let SQL = 'UPDATE transacion_ingreso_parqueadero SET fecha_salida=NOW(),es_activo=0 WHERE id_transacion_ingreso=:id_transacion_ingreso;';
+                        await conn.query2(SQL, { id_transacion_ingreso: r[0].id_transacion_ingreso });
+                        return { type: 1, retorno: 'F-' + r[0].id_transacion_ingreso };
+                    }
+                }
+                if (placa_excepcion) {
+                    //registramos la salida sin factura
+                    let SQL = 'UPDATE transacion_ingreso_parqueadero SET fecha_salida=NOW(),es_activo=0 WHERE id_transacion_ingreso=:id_transacion_ingreso;';
+                    await conn.query2(SQL, { id_transacion_ingreso: r[0].id_transacion_ingreso });
+                    return { type: 1, retorno: 'F-' + r[0].id_transacion_ingreso };
+                }
                 return { type: 0, retorno: 'F-' + r[0].id_transacion_ingreso };
             } else {
                 return { type: 0, retorno: 'I-' + r[0].id_transacion };
