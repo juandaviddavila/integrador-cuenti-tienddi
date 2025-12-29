@@ -1508,18 +1508,18 @@ $.validarSarlidaVh = async (id_company, id_sucursal, placa) => {
                 //no tiene transacion pero validemos tiempo de gracias
                 if (min_gratis > 0) {
                     //validamos en la base de datos si hora de igreso es menor a 15 min
-                    let SQL = 'SELECT fecha_ingreso FROM transacion_ingreso_parqueadero WHERE id_transacion_ingreso=:id_transacion_ingreso AND fecha_ingreso >= DATE_SUB(NOW(), INTERVAL :min_gratis MINUTE);';
+                    let SQL = `SELECT fecha_ingreso FROM transacion_ingreso_parqueadero WHERE id_transacion_ingreso=:id_transacion_ingreso AND fecha_ingreso >= (CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '-05:00') - INTERVAL :min_gratis MINUTE);`;
                     let r2 = await conn.query2(SQL, { id_transacion_ingreso: r[0].id_transacion_ingreso, min_gratis: min_gratis });
                     if (r2.length > 0) {
                         //registramos la salida sin factura
-                        let SQL = 'UPDATE transacion_ingreso_parqueadero SET fecha_salida=NOW(),es_activo=0 WHERE id_transacion_ingreso=:id_transacion_ingreso;';
+                        let SQL = `UPDATE transacion_ingreso_parqueadero SET fecha_salida=CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '-05:00'),es_activo=0 WHERE id_transacion_ingreso=:id_transacion_ingreso;`;
                         await conn.query2(SQL, { id_transacion_ingreso: r[0].id_transacion_ingreso });
                         return { type: 1, retorno: 'F-' + r[0].id_transacion_ingreso };
                     }
                 }
                 if (placa_excepcion) {
                     //registramos la salida sin factura
-                    let SQL = 'UPDATE transacion_ingreso_parqueadero SET fecha_salida=NOW(),es_activo=0 WHERE id_transacion_ingreso=:id_transacion_ingreso;';
+                    let SQL = `UPDATE transacion_ingreso_parqueadero SET fecha_salida=CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '-05:00'),es_activo=0 WHERE id_transacion_ingreso=:id_transacion_ingreso;`;
                     await conn.query2(SQL, { id_transacion_ingreso: r[0].id_transacion_ingreso });
                     return { type: 1, retorno: 'F-' + r[0].id_transacion_ingreso };
                 }
