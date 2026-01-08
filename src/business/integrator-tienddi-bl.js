@@ -1691,5 +1691,83 @@ $.pre_activar_plan = async (id_empresa, id_transaccion) => {
         }
     }
 };
+
+$.getId_usuario_id_empleado = async (id_company, id_empleado) => {
+    let cache = "cache_validar_id_usuario_empleado_" + id_company + "_" + id_empleado;
+    let tiepo_cache_segundos = 60 * 60 * 24 * 31; //por un mes
+    let data_cache = await $.getFromCache(cache);
+    if (data_cache !== null) {
+        return data_cache;
+    }
+    let respuesta = null;
+    let conn = null;
+    try {
+        conn = await objGestorBd.getConnectionEmpresa(id_company);
+        let SQL = `SELECT id_usuario_portal FROM adm_empleados WHERE id_empleado=:id_empleado;`;
+        let rows = await conn.query2(SQL, { id_empleado: id_empleado });
+        if (rows.length > 0) {
+            respuesta = { type: 1, id_usuario_portal: rows[0].id_usuario_portal };
+            return respuesta;
+        } else {
+            respuesta = { type: 0, message: "No se encontro el empleado" };
+            return respuesta;
+        }
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            // conn.end();
+            conn.release(); //release to pool
+        }
+        await $.storeInCache(cache, respuesta, ttlInSeconds = tiepo_cache_segundos);
+    }
+};
+$.getPermiso = async (id_empresa, id_usuario, id_permiso) => {
+    let conn = null;
+    try {
+        console.log("traer conexion");
+        conn = await objGestorBd.getPool_bases();
+        //Paso 1 valido que si en la tabla empresa_intento_pago_pre_activacion ya existe un registro hace 3 dias termino aqui
+        let cont = await conn.query2("SELECT COUNT(*) FROM permisos_usuarios WHERE es_activo=1 AND id_usuario=:id_usuario AND id_empresa=:id_empresa AND id_lista_permisos=:id_lista_permisos;", { id_empresa: id_empresa, id_usuario: id_usuario, id_lista_permisos: id_permiso });
+        if (cont[0]['COUNT(*)'] > 0) {
+            return { type: 1, message: "El usuario ya tiene permisos" };
+        } else {
+            return { type: 0, message: "El usuario no tiene permisos" };
+        }
+    } catch (err) {
+        console.log("error:" + err);
+        throw err;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            conn.end();//cerrar conexion y regresarlo
+        }
+    }
+};
+$.validar_permiso = async (id_company, id_empleado, id_permiso) => {
+    //valido cache  
+    let cache = "cache_validar_permiso_" + id_company + "_" + id_empleado + "_" + id_permiso;
+    let tiepo_cache_segundos = 60 * 60 * 6; //6 horas
+    let data_cache = await $.getFromCache(cache);
+    if (data_cache !== null) {
+        return data_cache;
+    }
+    let respuesta = await $.getId_usuario_id_empleado(id_company, id_empleado);
+    if (respuesta.type == 1) {
+        let permiso = await $.getPermiso(id_company, respuesta.id_usuario_portal, id_permiso);
+        if (permiso.type == 1) {
+            await $.storeInCache(cache, { type: 1, message: "El usuario tiene permisos" }, ttlInSeconds = tiepo_cache_segundos);
+            return { type: 1, message: "El usuario tiene permisos" };
+        } else {
+            await $.storeInCache(cache, { type: 0, message: "El usuario no tiene permisos" }, ttlInSeconds = tiepo_cache_segundos);
+            return { type: 0, message: "El usuario no tiene permisos" };
+        }
+    } else {
+        await $.storeInCache(cache, { type: 0, message: "No se encontro el empleado" }, ttlInSeconds = tiepo_cache_segundos);
+        return { type: 0, message: "No se encontro el empleado" };
+    }
+}
 // Exportamos
 module.exports = $;

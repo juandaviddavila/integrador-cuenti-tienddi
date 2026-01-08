@@ -237,5 +237,19 @@ router.post('/pre_activar_plan', async function (req, res) {
         fileManager.managerErrorApi(res, e);
     }
 });
+router.get('/validar_permiso/:clave/:id_company/:id_empleado/:id_permiso', async function (req, res) {
+    try {
+        if (req.params.clave !== "jdoaosdoieokoi4oi4o34o234sd485484DWjhhcv5897444343434===") {
+            res.json({
+                type: 0,
+                message: 'clave mala',
+            })
+        }
+        let r = await objIntegratorTienddiBl.validar_permiso(req.params.id_company, req.params.id_empleado, req.params.id_permiso);
+        res.json(r);
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
 // Exportamos las funciones en un objeto
 module.exports = router;
