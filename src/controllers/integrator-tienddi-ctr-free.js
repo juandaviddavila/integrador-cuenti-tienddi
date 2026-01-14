@@ -251,5 +251,43 @@ router.get('/validar_permiso/:clave/:id_company/:id_empleado/:id_permiso', async
         fileManager.managerErrorApi(res, e);
     }
 });
+router.get('/get_token_efimero/:clave/:id_company', async function (req, res) {
+    try {
+        if (req.params.clave !== "jdoaosdoieokoi4oi4o34o234sd485484DWjhhcv5897444343434===") {
+            res.json({
+                type: 0,
+                message: 'clave mala',
+            })
+        }
+        //validar ip
+        //console.log(req.session.id);
+        let ip = req.connection.remoteAddress || req.socket.remoteAddress;
+        try {
+            ip = req.header('x-forwarded-for').split(",")[0].trim();
+        } catch (error) {
+
+        }
+        console.log("IP Solicitud token efimero: " + ip);
+        ip = ip.split(",")[0].trim();
+        let ips = process.env.ips_autorizadas.split(";");
+        let sw = false;
+        for (let i = 0; i < ips.length; i++) {
+            if (ips[i] === ip) {
+                sw = true;
+                break;
+            }
+        }
+        if (!sw) {
+            res.status(203);
+            res.json({ mensaje: "ip " + ip + " no autorizada" });
+            return;
+        }
+
+        let r = await objIntegratorTienddiBl.getTokenEfimero(req.params.id_company);
+        res.json(r);
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
 // Exportamos las funciones en un objeto
 module.exports = router;

@@ -6,6 +6,7 @@ const objGestorSQL = require('../helpers/gestorSQL');
 const axios = require('axios');
 const fileManager = require('utilities_cuenti/vendor/fileManager');
 const crypto = require('crypto');
+const { json } = require("stream/consumers");
 let $ = {};
 
 let redondeo = function (numero, decimales) {
@@ -1098,11 +1099,17 @@ $.getConfigurations = async (data) => {
 };
 $.getTokenEfimero = async (id_company) => {
     try {
+        let cache = "cache_token_efimero" + id_company;
+        let data_cache = await $.getFromCache(cache);
+        if (data_cache !== null) {
+            console.log("token desde cache:" + data_cache);
+            return { token: data_cache };
+        }
         let api = await $.get_token_api(id_company);
         var config = {
             method: 'post',
             timeout: 1000 * 4, // Wait for 5 seconds
-            url: "https://generate-token-cuenti.cuenti.co/generate_token",
+            url: process.env.url_generate_token + "/generate_token",
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
@@ -1114,7 +1121,9 @@ $.getTokenEfimero = async (id_company) => {
             }
         };
         const resp = await axios(config);
-        return resp.data.token;
+        await $.storeInCache(cache, resp.data.token, ttlInSeconds = 60 * 60 * 24); //guardar por 1 dia
+        console.log("token :" + JSON.stringify(resp.data));
+        return { token: resp.data.token };
     } catch (error) {
         console.error(error);
         throw error;
