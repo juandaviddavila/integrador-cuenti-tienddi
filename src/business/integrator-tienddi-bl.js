@@ -1103,7 +1103,7 @@ $.getTokenEfimero = async (id_company) => {
         let data_cache = await $.getFromCache(cache);
         if (data_cache !== null) {
             console.log("token desde cache:" + data_cache);
-            return { token: data_cache };
+            return data_cache;
         }
         let api = await $.get_token_api(id_company);
         var config = {
@@ -1123,7 +1123,7 @@ $.getTokenEfimero = async (id_company) => {
         const resp = await axios(config);
         await $.storeInCache(cache, resp.data.token, ttlInSeconds = 60 * 60 * 24); //guardar por 1 dia
         console.log("token :" + JSON.stringify(resp.data));
-        return { token: resp.data.token };
+        return resp.data.token;
     } catch (error) {
         console.error(error);
         throw error;
