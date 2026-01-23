@@ -289,5 +289,7 @@ router.get('/get_token_efimero/:clave/:id_company', async function (req, res) {
         fileManager.managerErrorApi(res, e);
     }
 });
+
+
 // Exportamos las funciones en un objeto
 module.exports = router;

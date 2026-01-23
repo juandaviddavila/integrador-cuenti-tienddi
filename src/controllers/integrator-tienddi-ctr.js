@@ -57,5 +57,19 @@ router.post('/webhook_parking/:id_company/:id_sucursal/:id_empleado', queue_expr
         fileManager.managerErrorApi(res, e);
     }
 });
+router.post('/buscarTransacionTag', queue_express({
+    activeLimit: 1, queuedLimit: 5, rejectHandler: (req, res) => {
+        // res.sendStatus(500);
+        res.status(500);
+        res.json({ status: 500, error: "Intente más tarde cola de procesamiento muy llena test" });
+    }
+}), async function (req, res) {
+    try {
+        let r = await objIntegratorTienddiBl.buscarTransacionTag(req.headers['id-company'], req.body.nombre);
+        res.json(r);
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
 // Exportamos las funciones en un objeto
 module.exports = router;
