@@ -1785,8 +1785,9 @@ $.buscarTransacionTag = async (id_company, nombre) => {
         let SQL = `SELECT id,id_transacion FROM transacion_tag2 WHERE nombre =:nombre and es_activa=1;`;
         let rows = await conn.query2(SQL, { nombre: nombre });
         if (rows.length > 0) {
-            let SQL = `SELECT c.ciudad,c.zona,n_transacion,nFactura,t.id_transacion,t.total_neto,t.es_activo,t.id_cliente,t.fecha_registro,c.nombre_cliente,t.es_nula
-            FROM transacion_encabezado t INNER JOIN adm_cliente c ON (c.id_cliente=t.id_cliente) WHERE t.id_transacion=:id_transacion;`;
+            let SQL = `SELECT c.ciudad,c.zona,tipoDocumento,n_transacion,nFactura,t.id_transacion,t.total_neto,t.es_activo,t.id_cliente,t.fecha_registro,
+c.nombre_cliente,t.es_nula,tipo_documento_anterior,n_transacion_anterior
+FROM transacion_encabezado t INNER JOIN adm_cliente c ON (c.id_cliente=t.id_cliente) WHERE t.id_transacion=:id_transacion;`;
             let rows2 = await conn.query2(SQL, { id_transacion: rows[0].id_transacion });
             return rows2[0];
         } else {
