@@ -65,11 +65,20 @@ router.post('/buscarTransacionTag', queue_express({
     }
 }), async function (req, res) {
     try {
+        if (req.headers['id-company'] == null || req.headers['id-company'] == undefined || req.headers['id-company'] == '') {
+            res.json({
+                type: 0,
+                message: 'id_company no existe',
+            })
+            return;
+        }
         let r = await objIntegratorTienddiBl.buscarTransacionTag(req.headers['id-company'], req.body.nombre);
         res.json(r);
     } catch (e) {
         fileManager.managerErrorApi(res, e);
     }
 });
+
+
 // Exportamos las funciones en un objeto
 module.exports = router;

@@ -1804,5 +1804,92 @@ FROM transacion_encabezado t INNER JOIN adm_cliente c ON (c.id_cliente=t.id_clie
         }
     }
 };
+$.validarCrearColumna = async (id_empresa, nombre_tabla, nombre_columna, id_aplicacion) => {
+    let conn = null;
+    try {
+        console.log("traer conexion");
+        conn = await objGestorBd.getPool_bases();
+        //Paso 1 valido que si en la tabla empresa_intento_pago_pre_activacion ya existe un registro hace 3 dias termino aqui
+        let cont = await conn.query2(`SELECT COUNT(*) FROM ejecucion_validacion_columna_creada 
+WHERE id_empresa=:id_empresa AND nombre_columna=:nombre_columna 
+AND nombre_tabla=:nombre_tabla AND id_aplicacion=:id_aplicacion;`, { id_empresa: id_empresa, nombre_tabla: nombre_tabla, nombre_columna: nombre_columna, id_aplicacion: id_aplicacion });
+        if (cont[0]['COUNT(*)'] > 0) {
+            return { type: 1 };
+        } else {
+            return { type: 0 };
+        }
+    } catch (err) {
+        console.log("error:" + err);
+        throw err;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            conn.end();//cerrar conexion y regresarlo
+        }
+    }
+};
+
+$.registrarCrearColumna = async (id_empresa, nombre_tabla, nombre_columna, id_aplicacion) => {
+    let conn = null;
+    try {
+        console.log("traer conexion");
+        conn = await objGestorBd.getPool_bases();
+        //Paso 1 valido que si en la tabla empresa_intento_pago_pre_activacion ya existe un registro hace 3 dias termino aqui
+        await conn.query2(`INSERT INTO ejecucion_validacion_columna_creada(id_empresa,nombre_columna,nombre_tabla,id_aplicacion)
+VALUE(:id_empresa,:nombre_columna,:nombre_tabla,:id_aplicacion);`,
+            { id_empresa: id_empresa, nombre_tabla: nombre_tabla, nombre_columna: nombre_columna, id_aplicacion: id_aplicacion });
+        return { type: 1 };
+    } catch (err) {
+        console.log("error:" + err);
+        throw err;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            conn.end();//cerrar conexion y regresarlo
+        }
+    }
+};
+$.valiadarRangosDeFechasDeVentasCierreCaja = async (id_company, id_empleado, id_sucursal) => {
+    let conn = null;
+    try {
+        let sw_crear_columna = false;
+        conn = await objGestorBd.getConnectionEmpresa(id_company);
+
+        let SQL = `SHOW COLUMNS FROM transacion_encabezado_ext LIKE 'es_conciliado';`;
+        if ((await $.validarCrearColumna(id_company, "transacion_encabezado_ext", "es_conciliado", 2)).type == 0) {
+            let rows_existe = await conn.query2(SQL);
+            if (rows_existe.length == 0) {
+                //crear columna es_conciliado
+                await conn.query2(`ALTER TABLE transacion_encabezado_ext
+      ADD COLUMN es_conciliado TINYINT (2) DEFAULT 0 NULL,
+      ADD COLUMN id_conciliacio_pago INT NULL,
+      ADD INDEX (es_conciliado),
+      ADD FOREIGN KEY (id_conciliacio_pago) REFERENCES transacion_conciliacion_pagos (id_conciliacio_pago);`, {});
+                await conn.query2(`UPDATE  transacion_encabezado_ext SET es_conciliado=1;`, {});
+                await $.registrarCrearColumna(id_company, "transacion_encabezado_ext", "es_conciliado", 2);
+                sw_crear_columna = true;
+            }
+        }
+        //ya esta creado la columna 
+        SQL = `SELECT STRAIGHT_JOIN MIN(t.fecha_real) AS fecha_minima_venta, MAX(t.fecha_real)AS fecha_maxima_venta FROM transacion_encabezado t 
+INNER JOIN transacion_encabezado_ext ext ON(t.id_transacion=ext.id_transacion)
+WHERE ext.es_conciliado=0 AND t.id_empleado=:id_empleado AND t.es_nula=0 and t.id_sucursal=:id_sucursal;`;
+        if (id_empleado == 0) {
+            SQL = SQL.replace("AND t.id_empleado=:id_empleado", "");
+        }
+        let row = await conn.query2(SQL, { id_sucursal: id_sucursal, id_empleado: id_empleado });
+
+        return { sw_crear_columna: sw_crear_columna, data: row };
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            // conn.end();
+            conn.release(); //release to pool
+        }
+    }
+};
 // Exportamos
 module.exports = $;

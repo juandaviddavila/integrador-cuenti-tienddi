@@ -5,7 +5,7 @@ const router = Router();
 let fileManager = require('utilities_cuenti/vendor/fileManager');
 
 const objIntegratorTienddiBl = require('../business/integrator-tienddi-bl');
-
+let queue_express = require('express-queue');
 router.post('/get_url_store_cuenti', async function (req, res) {
     try {
         let r = await objIntegratorTienddiBl.get_url_store_cuenti(req.headers['id-company'], req.body);
@@ -290,6 +290,33 @@ router.get('/get_token_efimero/:clave/:id_company', async function (req, res) {
     }
 });
 
+router.post('/valiadarRangosDeFechasDeVentasCierreCaja/:clave', queue_express({
+    activeLimit: 1, queuedLimit: 10, rejectHandler: (req, res) => {
+        // res.sendStatus(500);
+        res.status(500);
+        res.json({ status: 500, error: "Intente más tarde cola de procesamiento muy llena test" });
+    }
+}), async function (req, res) {
+    if (req.params.clave !== "jdoaosdoieokoi4oi4o34o234sd485484DWjhhcv5897444343434===") {
+        res.json({
+            type: 0,
+            message: 'clave mala',
+        })
+    }
+    try {
+        if (req.headers['id-company'] == null || req.headers['id-company'] == undefined || req.headers['id-company'] == '') {
+            res.json({
+                type: 0,
+                message: 'id_company no existe',
+            })
+            return;
+        }
+        let r = await objIntegratorTienddiBl.valiadarRangosDeFechasDeVentasCierreCaja(req.headers['id-company'], req.body.id_empleado, req.body.id_sucursal);
+        res.json(r);
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
 
 // Exportamos las funciones en un objeto
 module.exports = router;
