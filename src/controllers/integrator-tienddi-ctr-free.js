@@ -291,7 +291,7 @@ router.get('/get_token_efimero/:clave/:id_company', async function (req, res) {
 });
 
 router.post('/valiadarRangosDeFechasDeVentasCierreCaja/:clave', queue_express({
-    activeLimit: 1, queuedLimit: 10, rejectHandler: (req, res) => {
+    activeLimit: 1, queuedLimit: 30, rejectHandler: (req, res) => {
         // res.sendStatus(500);
         res.status(500);
         res.json({ status: 500, error: "Intente más tarde cola de procesamiento muy llena test" });

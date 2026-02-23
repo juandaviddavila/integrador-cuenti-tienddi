@@ -1850,6 +1850,11 @@ VALUE(:id_empresa,:nombre_columna,:nombre_tabla,:id_aplicacion);`,
     }
 };
 $.valiadarRangosDeFechasDeVentasCierreCaja = async (id_company, id_empleado, id_sucursal) => {
+    let cache = "cache_validacion_rangos_fechas_cierre_caja_" + id_company + "_" + id_empleado + "_" + id_sucursal;
+    let data_cache = await $.getFromCache(cache);
+    if (data_cache !== null) {
+        return data_cache;
+    }
     let conn = null;
     try {
         let sw_crear_columna = false;
@@ -1874,11 +1879,15 @@ $.valiadarRangosDeFechasDeVentasCierreCaja = async (id_company, id_empleado, id_
         SQL = `SELECT STRAIGHT_JOIN MIN(t.fecha_real) AS fecha_minima_venta, MAX(t.fecha_real)AS fecha_maxima_venta FROM transacion_encabezado t 
 INNER JOIN transacion_encabezado_ext ext ON(t.id_transacion=ext.id_transacion)
 WHERE ext.es_conciliado=0 AND t.id_empleado=:id_empleado AND t.es_nula=0 and t.id_sucursal=:id_sucursal;`;
+
+        SQL = `SELECT STRAIGHT_JOIN MIN(t.fecha_real) AS fecha_minima_venta, now()AS fecha_maxima_venta FROM transacion_encabezado t 
+INNER JOIN transacion_encabezado_ext ext ON(t.id_transacion=ext.id_transacion)
+WHERE ext.es_conciliado=0 AND t.id_empleado=:id_empleado AND t.es_nula=0 and t.id_sucursal=:id_sucursal;`;
         if (id_empleado == 0) {
             SQL = SQL.replace("AND t.id_empleado=:id_empleado", "");
         }
         let row = await conn.query2(SQL, { id_sucursal: id_sucursal, id_empleado: id_empleado });
-
+        await $.storeInCache(cache, { sw_crear_columna: sw_crear_columna, data: row }, ttlInSeconds = 60 * 1);//1 min
         return { sw_crear_columna: sw_crear_columna, data: row };
     } catch (error) {
         console.error(error);
