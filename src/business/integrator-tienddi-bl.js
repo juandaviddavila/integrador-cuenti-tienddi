@@ -1835,8 +1835,8 @@ $.registrarCrearColumna = async (id_empresa, nombre_tabla, nombre_columna, id_ap
         console.log("traer conexion");
         conn = await objGestorBd.getPool_bases();
         //Paso 1 valido que si en la tabla empresa_intento_pago_pre_activacion ya existe un registro hace 3 dias termino aqui
-        await conn.query2(`INSERT INTO ejecucion_validacion_columna_creada(id_empresa,nombre_columna,nombre_tabla,id_aplicacion)
-VALUE(:id_empresa,:nombre_columna,:nombre_tabla,:id_aplicacion);`,
+        await conn.query2(`INSERT INTO ejecucion_validacion_columna_creada(id_empresa,nombre_columna,nombre_tabla,id_aplicacion,fecha_registro)
+VALUE(:id_empresa,:nombre_columna,:nombre_tabla,:id_aplicacion,now());`,
             { id_empresa: id_empresa, nombre_tabla: nombre_tabla, nombre_columna: nombre_columna, id_aplicacion: id_aplicacion });
         return { type: 1 };
     } catch (err) {
@@ -1873,12 +1873,16 @@ $.valiadarRangosDeFechasDeVentasCierreCaja = async (id_company, id_empleado, id_
                 await conn.query2(`UPDATE  transacion_encabezado_ext SET es_conciliado=1;`, {});
                 await $.registrarCrearColumna(id_company, "transacion_encabezado_ext", "es_conciliado", 2);
                 sw_crear_columna = true;
+            } else {
+                //de tabla quedo borrado pero si se creo
+                await conn.query2(`UPDATE  transacion_encabezado_ext SET es_conciliado=1;`, {});
+                await $.registrarCrearColumna(id_company, "transacion_encabezado_ext", "es_conciliado", 2);
             }
         }
         //ya esta creado la columna 
         SQL = `SELECT STRAIGHT_JOIN MIN(t.fecha_real) AS fecha_minima_venta, MAX(t.fecha_real)AS fecha_maxima_venta FROM transacion_encabezado t 
 INNER JOIN transacion_encabezado_ext ext ON(t.id_transacion=ext.id_transacion)
-WHERE ext.es_conciliado=0 AND t.id_empleado=:id_empleado AND t.es_nula=0 and t.id_sucursal=:id_sucursal;`;
+WHERE ext.es_conciliado=0 AND t.id_empleado=:id_empleado AND t.es_nula=0 and t.id_sucursal=:id_sucursal and t.tipoDocumento in(1,9,2,6);`;
 
         SQL = `SELECT STRAIGHT_JOIN MIN(t.fecha_real) AS fecha_minima_venta, now()AS fecha_maxima_venta FROM transacion_encabezado t 
 INNER JOIN transacion_encabezado_ext ext ON(t.id_transacion=ext.id_transacion)
