@@ -318,5 +318,33 @@ router.post('/valiadarRangosDeFechasDeVentasCierreCaja/:clave', queue_express({
     }
 });
 
+
+router.post('/valiadar_pago_realizado_mesa_columna/:clave', queue_express({
+    activeLimit: 1, queuedLimit: 30, rejectHandler: (req, res) => {
+        // res.sendStatus(500);
+        res.status(500);
+        res.json({ status: 500, error: "Intente más tarde cola de procesamiento muy llena test" });
+    }
+}), async function (req, res) {
+    if (req.params.clave !== "jdoaosdoieokoi4oi4o34o234sd485484DWjhhcv5897444343434") {
+        res.json({
+            type: 0,
+            message: 'clave mala',
+        })
+    }
+    try {
+        if (req.headers['id-company'] == null || req.headers['id-company'] == undefined || req.headers['id-company'] == '') {
+            res.json({
+                type: 0,
+                message: 'id_company no existe',
+            })
+            return;
+        }
+        let r = await objIntegratorTienddiBl.valiadar_pago_realizado_mesa_columna(req.headers['id-company']);
+        res.json(r);
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
 // Exportamos las funciones en un objeto
 module.exports = router;

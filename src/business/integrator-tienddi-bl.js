@@ -1904,5 +1904,43 @@ WHERE ext.es_conciliado=0 AND t.id_empleado=:id_empleado AND t.es_nula=0 and t.i
         }
     }
 };
+
+$.valiadar_pago_realizado_mesa_columna = async (id_company) => {
+    let cache = "cache_valiadar_pago_realizado_mesa_columna_" + id_company;
+    let data_cache = await $.getFromCache(cache);
+    if (data_cache !== null) {
+        return data_cache;
+    }
+    let conn = null;
+    try {
+        let sw_crear_columna = false;
+        conn = await objGestorBd.getConnectionEmpresa(id_company);
+        let SQL = `SHOW COLUMNS FROM transacion_mesas LIKE 'pago_realizado';`;
+        if ((await $.validarCrearColumna(id_company, "transacion_mesas", "pago_realizado", 2)).type == 0) {
+            let rows_existe = await conn.query2(SQL);
+            if (rows_existe.length == 0) {
+                //crear columna es_conciliado
+                await conn.query2(`ALTER TABLE transacion_mesas
+  ADD COLUMN pago_realizado TINYINT (2) DEFAULT 0 NULL;`, {});
+                await $.registrarCrearColumna(id_company, "transacion_mesas", "pago_realizado", 2);
+                sw_crear_columna = true;
+            } else {
+                //de tabla quedo borrado pero si se creo
+                await $.registrarCrearColumna(id_company, "transacion_mesas", "pago_realizado", 2);
+            }
+        }
+        await $.storeInCache(cache, { sw_crear_columna: false }, ttlInSeconds = 60 * 60);//1 min
+        return { sw_crear_columna: sw_crear_columna };
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            // conn.end();
+            conn.release(); //release to pool
+        }
+    }
+};
 // Exportamos
 module.exports = $;
