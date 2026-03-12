@@ -1929,7 +1929,7 @@ $.valiadar_pago_realizado_mesa_columna = async (id_company) => {
                 await $.registrarCrearColumna(id_company, "transacion_mesas", "pago_realizado", 2);
             }
         }
-        await $.storeInCache(cache, { sw_crear_columna: false }, ttlInSeconds = 60 * 60);//1 min
+        await $.storeInCache(cache, { sw_crear_columna: false }, ttlInSeconds = 60 * 60 * 24 * 30);//1 min
         return { sw_crear_columna: sw_crear_columna };
     } catch (error) {
         console.error(error);
