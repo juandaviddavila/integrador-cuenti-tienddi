@@ -7,6 +7,7 @@ const axios = require('axios');
 const fileManager = require('utilities_cuenti/vendor/fileManager');
 const crypto = require('crypto');
 const { json } = require("stream/consumers");
+const e = require("express");
 let $ = {};
 
 let redondeo = function (numero, decimales) {
@@ -1941,6 +1942,63 @@ $.valiadar_pago_realizado_mesa_columna = async (id_company) => {
             conn.release(); //release to pool
         }
     }
+};
+
+$.get_personalizacion_sucursal = async (id_company, id_sucursal) => {
+    let cache = "cache_personalizado_modulos_sucursal_" + id_company + "_" + id_sucursal;
+    let data_cache = await $.getFromCache(cache);
+    let r = null;
+    if (data_cache === null) {
+        let conn = null;
+        try {
+            conn = await objGestorBd.getConnectionEmpresa(id_company);
+            let SQL = 'SELECT personalizado FROM adm_sucursal WHERE  id_sucursal=:id_sucursal;';
+            r = await conn.query2(SQL, { id_sucursal: id_sucursal });
+            return r[0].personalizado;
+        } catch (error) {
+            console.error(error);
+            throw error;
+        } finally {
+            if (conn !== null) {
+                console.log("cierre conexion " + conn.threadId);
+                // conn.end();
+                conn.release(); //release to pool
+            }
+            await $.storeInCache(cache, r[0].personalizado, ttlInSeconds = 60 * 60); //cache por 1 hora
+        }
+    } else {
+        return data_cache;
+    }
+};
+
+$.activar_impuesto_consumo_lujo = async (id_company, id_sucursal, es_activo) => {
+    let cache = "cache_personalizado_modulos_sucursal_" + id_company + "_" + id_sucursal;
+    let r = null;
+    let conn = null;
+    try {
+        conn = await objGestorBd.getConnectionEmpresa(id_company);
+        let SQL = 'UPDATE adm_sucursal SET personalizado=:personalizado WHERE id_sucursal=:id_sucursal;';
+        if (es_activo == 0) {
+            r = await conn.query2(SQL, { id_sucursal: id_sucursal, personalizado: null });
+        } else {
+            let p = { "impuestos_personalizados": { "impuesto_consumo": { "impuesto_1": { "tipo": "valor", "nombre": "Impoconsumo licores y cigarrillos", "nombre_corto": "Impo", "nombre_corto2": "I-Impo", "descripcion": "Impoconsumo licores y cigarrillos", "nombre_campo": "total_impoconsumo", "nombre_combinado": "Impoconsumo + Estampilla", "abreviatura": "I", "valor_basico": 0, "nombre_combinado2": "Impoconsumo + ICUI" }, "impuesto_2": { "tipo": "valor", "nombre": "Estampillas", "nombre_corto": "Est", "nombre_corto2": "E-Est", "descripcion": "Estampillas", "nombre_campo": "total_estampilla", "nombre_combinado": "Impoconsumo + Estampilla", "abreviatura": "E", "valor_basico": 0, "nombre_combinado2": "Estampilla + IBUA" } }, "impuesto_personalizado": { "impuesto_1": { "tipo": "porcentaje", "nombre": "Impuesto Nacional al Consumo", "nombre_corto": "INC", "nombre_corto2": "INC", "descripcion": "IC", "nombre_campo": "Impuesto Nacional al Consumo", "nombre_combinado": "INC", "abreviatura": "INC", "valor_basico": 8, "nombre_combinado2": "Impuesto Nacional al Consumo" }, "impuesto_2": { "tipo": "valor", "nombre": "IBUA", "nombre_corto": "IBUA", "nombre_corto2": "B-IBUA", "descripcion": "IBUA ULTRAPROCESADOS BEBIDAS", "nombre_campo": "total_estampilla", "nombre_combinado": "ICUI + IBUA", "abreviatura": "B", "valor_basico": 0, "nombre_combinado2": "Estampilla + IBUA" } } } };
+            r = await conn.query2(SQL, { id_sucursal: id_sucursal, personalizado: p });
+        }
+        SQL = 'SELECT personalizado FROM adm_sucursal WHERE  id_sucursal=:id_sucursal;';
+        r = await conn.query2(SQL, { id_sucursal: id_sucursal });
+        return r[0].personalizado;
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+        if (conn !== null) {
+            console.log("cierre conexion " + conn.threadId);
+            // conn.end();
+            conn.release(); //release to pool
+        }
+        await $.storeInCache(cache, r[0].personalizado, ttlInSeconds = 60 * 60); //cache por 1 hora
+    }
+
 };
 // Exportamos
 module.exports = $;

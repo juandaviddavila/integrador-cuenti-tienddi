@@ -346,5 +346,35 @@ router.post('/valiadar_pago_realizado_mesa_columna/:clave', queue_express({
         fileManager.managerErrorApi(res, e);
     }
 });
+
+router.get('/get_personalizacion_sucursal/:id_empresa/:id_sucursal', queue_express({
+    activeLimit: 1, queuedLimit: 10, rejectHandler: (req, res) => {
+        // res.sendStatus(500);
+        res.status(500);
+        res.json({ status: 500, error: "Intente más tarde cola de procesamiento muy llena test" });
+    }
+}), async function (req, res) {
+    try {
+        let r = await objIntegratorTienddiBl.get_personalizacion_sucursal(req.params.id_empresa, req.params.id_sucursal);
+        res.json(r);
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
+
+router.get('/activar_impuesto_consumo_lujo/:id_empresa/:id_sucursal/:es_activo', queue_express({
+    activeLimit: 1, queuedLimit: 10, rejectHandler: (req, res) => {
+        // res.sendStatus(500);
+        res.status(500);
+        res.json({ status: 500, error: "Intente más tarde cola de procesamiento muy llena test" });
+    }
+}), async function (req, res) {
+    try {
+        let r = await objIntegratorTienddiBl.activar_impuesto_consumo_lujo(req.params.id_empresa, req.params.id_sucursal, req.params.es_activo);
+        res.json(r);
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
 // Exportamos las funciones en un objeto
 module.exports = router;
