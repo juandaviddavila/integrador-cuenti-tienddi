@@ -1132,10 +1132,10 @@ $.getTokenEfimero = async (id_company) => {
     }
 };
 
-$.findActiveEvents = async (id_company, branchId) => {
+$.findActiveEvents = async (id_company, branchId, slug) => {
     try {
         let token = await $.getTokenEfimero(id_company);
-        let cache = "cache_findActiveEvents_" + id_company + "_" + branchId;
+        let cache = "cache_findActiveEvents_" + id_company + "_" + branchId + '_' + slug;
         let data_cache = await $.getFromCache(cache);
         if (data_cache !== null) {
             console.log("token desde cache:" + data_cache);
@@ -1158,8 +1158,13 @@ $.findActiveEvents = async (id_company, branchId) => {
         let existe_eventos = false;
         if (resp.data.data !== null) {
             if (resp.data.data.events.length > 0) {
-                console.log("eventos activos");
-                existe_eventos = true;
+                if (resp.data.data.events.some(e => e.slug.includes(slug))) {
+                    console.log("eventos activos");
+                    existe_eventos = true;
+                } else {
+                    console.log("no hay eventos activos");
+                    existe_eventos = false;
+                }
             } else {
                 console.log("no hay eventos activos");
                 existe_eventos = false;

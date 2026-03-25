@@ -392,9 +392,9 @@ router.get('/get_consecutivos/:id_empresa', queue_express({
     }
 });
 
-router.get('/findActiveEvents/:id_company/:branchId', async function (req, res) {
+router.get('/findActiveEvents/:id_company/:branchId/:slug', async function (req, res) {
     try {
-        let r = await objIntegratorTienddiBl.findActiveEvents(req.params.id_company, req.params.branchId);
+        let r = await objIntegratorTienddiBl.findActiveEvents(req.params.id_company, req.params.branchId, req.params.slug);
         res.json(r);
     } catch (e) {
         fileManager.managerErrorApi(res, e);
