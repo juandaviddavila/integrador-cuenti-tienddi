@@ -376,5 +376,29 @@ router.get('/activar_impuesto_consumo_lujo/:id_empresa/:id_sucursal/:es_activo',
         fileManager.managerErrorApi(res, e);
     }
 });
+
+router.get('/get_consecutivos/:id_empresa', queue_express({
+    activeLimit: 1, queuedLimit: 10, rejectHandler: (req, res) => {
+        // res.sendStatus(500);
+        res.status(500);
+        res.json({ status: 500, error: "Intente más tarde cola de procesamiento muy llena test" });
+    }
+}), async function (req, res) {
+    try {
+        let r = await objIntegratorTienddiBl.get_consecutivos(req.params.id_empresa);
+        res.json(r);
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
+
+router.get('/findActiveEvents/:id_company/:branchId', async function (req, res) {
+    try {
+        let r = await objIntegratorTienddiBl.findActiveEvents(req.params.id_company, req.params.branchId);
+        res.json(r);
+    } catch (e) {
+        fileManager.managerErrorApi(res, e);
+    }
+});
 // Exportamos las funciones en un objeto
 module.exports = router;

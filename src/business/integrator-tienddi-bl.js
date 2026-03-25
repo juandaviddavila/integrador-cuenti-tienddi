@@ -1131,6 +1131,52 @@ $.getTokenEfimero = async (id_company) => {
     } finally {
     }
 };
+
+$.findActiveEvents = async (id_company, branchId) => {
+    try {
+        let token = await $.getTokenEfimero(id_company);
+        let cache = "cache_findActiveEvents_" + id_company + "_" + branchId;
+        let data_cache = await $.getFromCache(cache);
+        if (data_cache !== null) {
+            console.log("token desde cache:" + data_cache);
+            return data_cache;
+        }
+        let data = '{\n    "branchId": ' + branchId + '\n}';
+        let config = {
+            method: 'post',
+            timeout: 1000 * 4, // Wait for 5 seconds
+            url: "https://integrator-apps-api-dok.cuenti.co/api/integrations/configuration/findActiveEvents",
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-Auth-Token-Empresa': id_company,
+                'Authorization': 'Bearer ' + token
+            },
+            data: data
+        };
+        const resp = await axios(config);
+        let existe_eventos = false;
+        if (resp.data.data !== null) {
+            if (resp.data.data.events.length > 0) {
+                console.log("eventos activos");
+                existe_eventos = true;
+            } else {
+                console.log("no hay eventos activos");
+                existe_eventos = false;
+            }
+        } else {
+            console.log("no hay eventos activos");
+            existe_eventos = false;
+        }
+        await $.storeInCache(cache, existe_eventos, ttlInSeconds = 60 * 60 * 24); //guardar por 1 dia
+
+        return existe_eventos;
+    } catch (error) {
+        console.error(error);
+        throw error;
+    } finally {
+    }
+};
 $.checkPayment = async (codigo, id_empresa, id_sucursal) => {
     try {
         let token = await $.getTokenEfimero(id_empresa);
@@ -1998,7 +2044,35 @@ $.activar_impuesto_consumo_lujo = async (id_company, id_sucursal, es_activo) => 
         }
         await $.storeInCache(cache, r[0].personalizado, ttlInSeconds = 60 * 60); //cache por 1 hora
     }
-
 };
+
+
+$.get_consecutivos = async (id_company) => {
+    let cache = "cache_consecutivo_es_activo" + id_company;
+    let data_cache = await $.getFromCache(cache);
+    let r = null;
+    if (data_cache === null) {
+        let conn = null;
+        try {
+            conn = await objGestorBd.getConnectionEmpresa(id_company);
+            let SQL = 'SELECT id_consecutivo,es_activo,id_sucursal FROM adm_consecutivos WHERE es_activo=1;';
+            r = await conn.query2(SQL, {});
+            return r;
+        } catch (error) {
+            console.error(error);
+            throw error;
+        } finally {
+            if (conn !== null) {
+                console.log("cierre conexion " + conn.threadId);
+                // conn.end();
+                conn.release(); //release to pool
+            }
+            await $.storeInCache(cache, r, ttlInSeconds = 60 * 60); //cache por 1 hora
+        }
+    } else {
+        return data_cache;
+    }
+};
+
 // Exportamos
 module.exports = $;
