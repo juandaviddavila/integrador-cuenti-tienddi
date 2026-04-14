@@ -93,7 +93,7 @@ $.get_imagen_base64 = async function (url) {
     // Handle Error Here
     console.error(err);
     try {
-    } catch (error) {}
+    } catch (error) { }
     throw err;
   }
 };
@@ -441,7 +441,7 @@ $.generate_product = async function (
       //agregar impuesto ya que precio_venta_online es con impuestos incluidos
       row.precio_venta_online ==
         row.precio_venta_online +
-          row.precio_venta_online * (row.valor_impuesto / 100);
+        row.precio_venta_online * (row.valor_impuesto / 100);
     }
   }
   //al precio  row.precio_venta_online quitarle la parte que es de impuestos
@@ -2730,7 +2730,7 @@ $.get_consecutivosSistemaContingencia = async (id_company) => {
   try {
     conn = await objGestorBd.getConnectionEmpresa(id_company);
     let SQL =
-      "SELECT id_consecutivo,es_activo,id_sucursal FROM adm_consecutivos WHERE es_activo=1 and es_contingencia=0 and tipo_consecutivo=1;";
+      "SELECT id_consecutivo,es_activo,id_sucursal,nombre_consecutivo,resolucion FROM adm_consecutivos WHERE es_activo=1 and es_contingencia=0 and tipo_consecutivo=1;";
     r = await conn.query2(SQL, {});
     return r;
   } catch (error) {
@@ -2745,5 +2745,28 @@ $.get_consecutivosSistemaContingencia = async (id_company) => {
   }
 };
 
+$.consultarEstadoContingencia = async (id_empresa, nit, id_consecutivo) => {
+  try {
+    let token = await $.getTokenEfimero(id_empresa);
+    let config = {
+      method: "get",
+      timeout: 1000 * 4, // Wait for 5 seconds
+      url:
+        `https://contingencia-dian-api.cuenti.co/api/contingencia/estado/${id_empresa}/${nit}/${id_consecutivo}`,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-Auth-Token-Empresa": id_empresa,
+        Authorization: "Bearer " + token,
+      },
+    };
+    const resp = await axios(config);
+    return resp.data;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  } finally {
+  }
+};
 // Exportamos
 module.exports = $;

@@ -70,8 +70,8 @@ router.get(
       res.setHeader(
         "Content-Disposition",
         "attachment; filename=informe_ventas_" +
-          req.params.id_company +
-          ".xlsx",
+        req.params.id_company +
+        ".xlsx",
       );
 
       res.send(data.content);
@@ -119,8 +119,8 @@ router.get(
         res.setHeader(
           "Content-Disposition",
           "attachment; filename=informe_ventas_" +
-            req.params.id_company +
-            ".xlsx",
+          req.params.id_company +
+          ".xlsx",
         );
 
         res.send(data.content);
@@ -356,7 +356,7 @@ router.get("/get_token_efimero/:clave/:id_company", async function (req, res) {
     let ip = req.connection.remoteAddress || req.socket.remoteAddress;
     try {
       ip = req.header("x-forwarded-for").split(",")[0].trim();
-    } catch (error) {}
+    } catch (error) { }
     console.log("IP Solicitud token efimero: " + ip);
     ip = ip.split(",")[0].trim();
     let ips = process.env.ips_autorizadas.split(";");
@@ -596,6 +596,22 @@ router.get(
         req.params.id_company,
         req.params.branchId,
         req.params.slug,
+      );
+      res.json(r);
+    } catch (e) {
+      fileManager.managerErrorApi(res, e);
+    }
+  },
+);
+
+router.get(
+  "/consultarEstadoContingencia/:id_empresa/:nit/:id_consecutivo",
+  async function (req, res) {
+    try {
+      let r = await objIntegratorTienddiBl.consultarEstadoContingencia(
+        req.params.id_empresa,
+        req.params.nit,
+        req.params.id_consecutivo,
       );
       res.json(r);
     } catch (e) {
