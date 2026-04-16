@@ -2730,7 +2730,7 @@ $.get_consecutivosSistemaContingencia = async (id_company) => {
   try {
     conn = await objGestorBd.getConnectionEmpresa(id_company);
     let SQL =
-      "SELECT id_consecutivo,es_activo,id_sucursal,nombre_consecutivo,resolucion FROM adm_consecutivos WHERE es_activo=1 and es_contingencia=0 and tipo_consecutivo=1;";
+      "SELECT id_consecutivo,es_activo,id_sucursal,nombre_consecutivo,resolucion FROM adm_consecutivos WHERE es_activo=1 and es_contingencia=1 and tipo_consecutivo=1;";
     r = await conn.query2(SQL, {});
     return r;
   } catch (error) {
