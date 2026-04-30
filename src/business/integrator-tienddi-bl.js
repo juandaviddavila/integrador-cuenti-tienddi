@@ -93,7 +93,7 @@ $.get_imagen_base64 = async function (url) {
     // Handle Error Here
     console.error(err);
     try {
-    } catch (error) { }
+    } catch (error) {}
     throw err;
   }
 };
@@ -441,7 +441,7 @@ $.generate_product = async function (
       //agregar impuesto ya que precio_venta_online es con impuestos incluidos
       row.precio_venta_online ==
         row.precio_venta_online +
-        row.precio_venta_online * (row.valor_impuesto / 100);
+          row.precio_venta_online * (row.valor_impuesto / 100);
     }
   }
   //al precio  row.precio_venta_online quitarle la parte que es de impuestos
@@ -2751,8 +2751,7 @@ $.consultarEstadoContingencia = async (id_empresa, nit, id_consecutivo) => {
     let config = {
       method: "get",
       timeout: 1000 * 4, // Wait for 5 seconds
-      url:
-        `https://contingencia-dian-api.cuenti.co/api/contingencia/estado/${id_empresa}/${nit}/${id_consecutivo}`,
+      url: `https://contingencia-dian-api.cuenti.co/api/contingencia/estado/${id_empresa}/${nit}/${id_consecutivo}`,
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
@@ -2766,6 +2765,31 @@ $.consultarEstadoContingencia = async (id_empresa, nit, id_consecutivo) => {
     console.error(error);
     throw error;
   } finally {
+  }
+};
+
+$.validarBolsasFE = async (id_empresa) => {
+  let conn = null;
+  try {
+    console.log("traer conexion");
+    conn = await objGestorBd.getPool_bases();
+    let SQL = `SELECT b.id,b.id_empresa,b.cantidad_documentos,b.ultima_compra FROM fe_saldo_bolsa b  WHERE b.id_empresa=:id_empresa;`;
+    const rows = await conn.query2(SQL, {
+      id_empresa: id_empresa,
+    });
+    if (rows.length > 0) {
+      return rows[0].cantidad_documentos;
+    } else {
+      return 0;
+    }
+  } catch (err) {
+    console.log("error:" + err);
+    throw err;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      conn.end(); //cerrar conexion y regresarlo
+    }
   }
 };
 // Exportamos
