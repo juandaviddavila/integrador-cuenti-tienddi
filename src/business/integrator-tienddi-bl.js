@@ -2792,5 +2792,92 @@ $.validarBolsasFE = async (id_empresa) => {
     }
   }
 };
+
+$.actualizarCostosCasoPuntoCaliente = async (
+  id_company,
+  id_centro_costo,
+  id_sucursal,
+) => {
+  let conn = null;
+  try {
+    conn = await objGestorBd.getConnectionEmpresa(id_company);
+    let SQL =
+      "UPDATE transacion_encabezado SET id_centro_costo=:id_centro_costo WHERE id_sucursal=:id_sucursal AND tipoDocumento=1";
+    let r = await conn.query2(SQL, {
+      id_centro_costo: id_centro_costo,
+      id_sucursal: id_sucursal,
+    });
+
+    SQL = `UPDATE transacion_detalle d
+JOIN transacion_encabezado e 
+  ON e.id_transacion = d.id_transacion
+SET d.id_centro_costo = :id_centro_costo
+WHERE e.id_sucursal = :id_sucursal
+  AND e.tipoDocumento = 1
+  AND d.tipoDocumento = 1;`;
+    let r2 = await conn.query2(SQL, {
+      id_centro_costo: id_centro_costo,
+      id_sucursal: id_sucursal,
+    });
+    return {
+      afecatodTransaciones: r.affectedRows,
+      afectadoDetalle: r2.affectedRows,
+    };
+  } catch (error) {
+    console.error(error);
+    throw error;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      // conn.end();
+      conn.release(); //release to pool
+    }
+  }
+};
+$.lista_empresas = async () => {
+  let cache = "cache_lista_empresas_basico";
+  let data_cache = await $.getFromCache(cache);
+  if (data_cache === null) {
+    let conn = null;
+    try {
+      console.log("traer conexion");
+      conn = await objGestorBd.getPool_bases();
+      let SQL =
+        "SELECT id_empresa,nombre_empresa FROM empresas WHERE es_activo=1;";
+      const rows = await conn.query2(SQL, {});
+      await $.storeInCache(cache, rows, (ttlInSeconds = 60 * 60)); //cache por 1 hora
+      return rows;
+    } catch (err) {
+      console.log("error:" + err);
+      throw err;
+    } finally {
+      if (conn !== null) {
+        console.log("cierre conexion " + conn.threadId);
+        conn.end(); //cerrar conexion y regresarlo
+      }
+    }
+  } else {
+    return data_cache;
+  }
+};
+$.lista_empresas_id = async (id_empresa) => {
+  let conn = null;
+  try {
+    console.log("traer conexion");
+    conn = await objGestorBd.getPool_bases();
+    let SQL =
+      "SELECT id_empresa,nombre_empresa FROM empresas WHERE es_activo=1 and id_empresa=:id_empresa;";
+    const rows = await conn.query2(SQL, { id_empresa: id_empresa });
+    return rows;
+  } catch (err) {
+    console.log("error:" + err);
+    throw err;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      conn.end(); //cerrar conexion y regresarlo
+    }
+  }
+};
 // Exportamos
 module.exports = $;

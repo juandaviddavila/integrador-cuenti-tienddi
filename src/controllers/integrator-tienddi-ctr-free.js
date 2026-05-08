@@ -646,5 +646,58 @@ router.get(
   },
 );
 
+router.get(
+  "/actualizar_costos_caso_punto_caliente",
+  queue_express({
+    activeLimit: 1,
+    queuedLimit: 1,
+    rejectHandler: (req, res) => {
+      // res.sendStatus(500);
+      res.status(500);
+      res.json({
+        status: 500,
+        error: "Intente más tarde cola de procesamiento muy llena test",
+      });
+    },
+  }),
+  async function (req, res) {
+    try {
+      let r = await objIntegratorTienddiBl.actualizarCostosCasoPuntoCaliente(
+        req.query.id_empresa,
+        req.query.id_centro_costo,
+        req.query.id_sucursal,
+      );
+      res.json(r);
+    } catch (e) {
+      fileManager.managerErrorApi(res, e);
+    }
+  },
+);
+
+router.get(
+  "/lista_empresas_id",
+  queue_express({
+    activeLimit: 1,
+    queuedLimit: 1,
+    rejectHandler: (req, res) => {
+      // res.sendStatus(500);
+      res.status(500);
+      res.json({
+        status: 500,
+        error: "Intente más tarde cola de procesamiento muy llena test",
+      });
+    },
+  }),
+  async function (req, res) {
+    try {
+      let r = await objIntegratorTienddiBl.lista_empresas_id(
+        req.query.id_empresa,
+      );
+      res.json(r);
+    } catch (e) {
+      fileManager.managerErrorApi(res, e);
+    }
+  },
+);
 // Exportamos las funciones en un objeto
 module.exports = router;
