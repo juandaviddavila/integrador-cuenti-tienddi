@@ -128,5 +128,7 @@ router.get("/lista_empresas", async function (req, res) {
     fileManager.managerErrorApi(res, e);
   }
 });
+
+
 // Exportamos las funciones en un objeto
 module.exports = router;

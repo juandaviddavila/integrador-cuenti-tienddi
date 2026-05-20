@@ -93,7 +93,7 @@ $.get_imagen_base64 = async function (url) {
     // Handle Error Here
     console.error(err);
     try {
-    } catch (error) {}
+    } catch (error) { }
     throw err;
   }
 };
@@ -441,7 +441,7 @@ $.generate_product = async function (
       //agregar impuesto ya que precio_venta_online es con impuestos incluidos
       row.precio_venta_online ==
         row.precio_venta_online +
-          row.precio_venta_online * (row.valor_impuesto / 100);
+        row.precio_venta_online * (row.valor_impuesto / 100);
     }
   }
   //al precio  row.precio_venta_online quitarle la parte que es de impuestos
@@ -2876,6 +2876,38 @@ $.lista_empresas_id = async (id_empresa) => {
     if (conn !== null) {
       console.log("cierre conexion " + conn.threadId);
       conn.end(); //cerrar conexion y regresarlo
+    }
+  }
+};
+
+$.get_ordenes_compra_interna_cantidad = async (id_company, id_sucursal, id_producto) => {
+  let cache = "cache_ordenes_compra_interna_cantidad_" + id_company + "_" + id_sucursal + "_" + id_producto;
+  let data_cache = await $.getFromCache(cache);
+  let conn = null;
+  try {
+    conn = await objGestorBd.getConnectionEmpresa(id_company);
+    let SQL =
+      `SELECT 
+    SUM(dd.cantidad) - SUM(dd.cantidad_original_pedido) AS cantidad
+FROM vent_detalle_documento dd
+STRAIGHT_JOIN vent_documento d 
+    ON d.id_documento = dd.id_documento
+WHERE dd.id_producto = :id_producto
+    AND dd.tasa_cumplimiento < 100
+    AND d.tipoDocumento = 24
+    AND d.es_nula = 0
+    AND d.es_activo = 1 AND d.id_sucursal=:id_sucursal;
+    `;
+    r = await conn.query2(SQL, { id_sucursal: id_sucursal, id_producto: id_producto });
+    return r;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      // conn.end();
+      conn.release(); //release to pool
     }
   }
 };
