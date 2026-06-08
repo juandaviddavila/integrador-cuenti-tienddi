@@ -2911,5 +2911,127 @@ WHERE dd.id_producto = :id_producto
     }
   }
 };
+
+$.consultar_empresa_sucursal = async (id_empresa, id_sucursal) => {
+  let conn = null;
+  try {
+    console.log("traer conexion");
+    conn = await objGestorBd.getPool_bases();
+    let id_empresa_hija = id_empresa;
+
+    let SQL =
+      "SELECT id_empresa,id_empresa_padre,id_sucursal,es_activo,nit_empresa,es_multi_empresa FROM empresas WHERE  (id_empresa=:id_empresa) and es_activo=1";
+    let rows = await conn.query2(SQL, { id_empresa: id_empresa });
+    if (rows[0].es_multi_empresa == 1) {
+      SQL =
+        "SELECT id_empresa,id_empresa_padre,id_sucursal,es_activo,nit_empresa,es_multi_empresa FROM empresas WHERE (id_empresa=:id_empresa OR id_empresa_padre=:id_empresa) and es_activo=1";
+      rows = await conn.query2(SQL, { id_empresa: id_empresa });
+      if (rows.length > 0) {
+        //busco  id_empresa_hija
+        for (let row of rows) {
+          if (row.id_sucursal === id_sucursal) {
+            id_empresa_hija = row.id_empresa;
+            break;
+          }
+        }
+      }
+    }
+    SQL = 'SELECT nit_empresa,nombre_empresa,ciudad,departamento,pais  FROM empresas WHERE id_empresa=:id_empresa;';
+    rows = await conn.query2(SQL, { id_empresa: id_empresa });
+    return {
+      id_empresa_hija: id_empresa_hija, id_empresa: id_empresa, id_sucursal: id_sucursal,
+      nit_empresa: rows[0].nit_empresa,
+      nombre_empresa: rows[0].nombre_empresa,
+      ciudad: rows[0].ciudad,
+      departamento: rows[0].departamento,
+      pais: rows[0].pais
+    };
+  } catch (err) {
+    console.log("error:" + err);
+    throw err;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      conn.end(); //cerrar conexion y regresarlo
+    }
+  }
+};
+$.consultar_empresa_sucursal_moneda = async (id_empresa, id_sucursal) => {
+  let cache =
+    "cache_consultar_empresa_sucursal_moneda_" +
+    id_empresa +
+    "_" +
+    id_sucursal;
+  let data_cache = await $.getFromCache(cache);
+  if (data_cache !== null) {
+    return data_cache;
+  }
+
+  let conn = null;
+  try {
+    let consultar_empresa_sucursal = await $.consultar_empresa_sucursal(
+      id_empresa,
+      id_sucursal,
+    );
+    conn = await objGestorBd.getConnectionEmpresa(
+      consultar_empresa_sucursal.id_empresa_hija,
+    );
+    let SQL = `SELECT id_sucursal,nombre_sucursal,digitos_decimales,reondeoTotales,simbolo_moneda FROM adm_sucursal WHERE id_sucursal=:id_sucursal;`;
+    let rows = await conn.query2(SQL, { id_sucursal: id_sucursal });
+    let r = {
+      ...consultar_empresa_sucursal,
+      id_sucursal: id_sucursal,
+      nombre_sucursal: null,
+      digitos_decimales: null,
+      reondeoTotales: null,
+      simbolo_moneda: null,
+    };
+    if (rows.length > 0) {
+      r.nombre_sucursal = rows[0].nombre_sucursal;
+      r.digitos_decimales = rows[0].digitos_decimales;
+      r.reondeoTotales = rows[0].reondeoTotales;
+      r.simbolo_moneda = rows[0].simbolo_moneda;
+    }
+
+    await $.storeInCache(cache, r, (ttlInSeconds = 60 * 30)); //cache por 1 hora
+    return r;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      // conn.end();
+      conn.release(); //release to pool
+    }
+  }
+};
+
+$.consultarConsecutivosAndEmpleado = async (id_company, id_empleado, id_sucursal) => {
+  let conn = null;
+  try {
+    conn = await objGestorBd.getConnectionEmpresa(id_company);
+    let SQL =
+      `SELECT c.id_sucursal,c.id_consecutivo,c.nombre_consecutivo,c.prefijo,c.es_factura_electronica,c.fecha_vencimiento,c.finaliza,c.numero+1 AS numero
+FROM adm_consecutivo_empleado ce INNER JOIN adm_consecutivos c ON(c.id_consecutivo=ce.id_consecutivo) 
+WHERE c.es_activo=1 AND ce.es_activo=1 AND ce.id_empleado=:id_empleado AND (c.id_sucursal=:id_sucursal OR c.id_sucursal IS NULL)  ORDER BY c.id_sucursal DESC;
+    `;
+    let r = await conn.query2(SQL, { id_sucursal: id_sucursal, id_empleado: id_empleado });
+    SQL = 'SELECT id_usuario_portal FROM adm_empleados WHERE id_empleado=:id_empleado;';
+    let r1 = await conn.query2(SQL, { id_empleado: id_empleado });
+
+    let r_permiso = await $.getPermiso(id_company, r1[0].id_usuario_portal, 140);
+    return { consecutivo: r, id_usuario: r1[0].id_usuario_portal, r_permiso: r_permiso };
+  } catch (error) {
+    console.error(error);
+    throw error;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      // conn.end();
+      conn.release(); //release to pool
+    }
+  }
+};
 // Exportamos
 module.exports = $;
