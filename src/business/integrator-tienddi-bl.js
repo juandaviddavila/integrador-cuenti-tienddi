@@ -2920,11 +2920,11 @@ $.consultar_empresa_sucursal = async (id_empresa, id_sucursal) => {
     let id_empresa_hija = id_empresa;
 
     let SQL =
-      "SELECT id_empresa,id_empresa_padre,id_sucursal,es_activo,nit_empresa,es_multi_empresa FROM empresas WHERE  (id_empresa=:id_empresa) and es_activo=1";
+      "SELECT id_sector_empresa,id_empresa,id_empresa_padre,id_sucursal,es_activo,nit_empresa,es_multi_empresa FROM empresas WHERE  (id_empresa=:id_empresa) and es_activo=1";
     let rows = await conn.query2(SQL, { id_empresa: id_empresa });
     if (rows[0].es_multi_empresa == 1) {
       SQL =
-        "SELECT id_empresa,id_empresa_padre,id_sucursal,es_activo,nit_empresa,es_multi_empresa FROM empresas WHERE (id_empresa=:id_empresa OR id_empresa_padre=:id_empresa) and es_activo=1";
+        "SELECT id_sector_empresa,id_empresa,id_empresa_padre,id_sucursal,es_activo,nit_empresa,es_multi_empresa FROM empresas WHERE (id_empresa=:id_empresa OR id_empresa_padre=:id_empresa) and es_activo=1";
       rows = await conn.query2(SQL, { id_empresa: id_empresa });
       if (rows.length > 0) {
         //busco  id_empresa_hija
@@ -2936,7 +2936,7 @@ $.consultar_empresa_sucursal = async (id_empresa, id_sucursal) => {
         }
       }
     }
-    SQL = 'SELECT nit_empresa,nombre_empresa,ciudad,departamento,pais  FROM empresas WHERE id_empresa=:id_empresa;';
+    SQL = 'SELECT id_sector_empresa,nit_empresa,nombre_empresa,ciudad,departamento,pais  FROM empresas WHERE id_empresa=:id_empresa;';
     rows = await conn.query2(SQL, { id_empresa: id_empresa });
     return {
       id_empresa_hija: id_empresa_hija, id_empresa: id_empresa, id_sucursal: id_sucursal,
@@ -2944,7 +2944,8 @@ $.consultar_empresa_sucursal = async (id_empresa, id_sucursal) => {
       nombre_empresa: rows[0].nombre_empresa,
       ciudad: rows[0].ciudad,
       departamento: rows[0].departamento,
-      pais: rows[0].pais
+      pais: rows[0].pais,
+      id_sector_empresa: rows[0].id_sector_empresa
     };
   } catch (err) {
     console.log("error:" + err);

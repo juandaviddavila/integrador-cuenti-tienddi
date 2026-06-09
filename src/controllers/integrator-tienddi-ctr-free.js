@@ -739,5 +739,26 @@ router.post(
   },
 );
 
+router.post(
+  "/consultar_empresa_sucursal",
+  queue_express({
+    activeLimit: 1,
+    queuedLimit: 5,
+    rejectHandler: (req, res) => {
+      // res.sendStatus(500);
+      res.status(500);
+      res.json({
+        status: 500,
+        error: "Intente más tarde cola de procesamiento muy llena test",
+      });
+    },
+  }), async function (req, res) {
+    try {
+      let r = await objIntegratorTienddiBl.consultar_empresa_sucursal(req.body.id_empresa, req.body.id_sucursal);
+      res.json(r);
+    } catch (e) {
+      fileManager.managerErrorApi(res, e);
+    }
+  });
 // Exportamos las funciones en un objeto
 module.exports = router;
