@@ -3034,5 +3034,24 @@ WHERE c.es_activo=1 AND ce.es_activo=1 AND ce.id_empleado=:id_empleado AND (c.id
     }
   }
 };
+$.listaProvedoresIsa = async (id_company) => {
+  let conn = null;
+  try {
+    conn = await objGestorBd.getConnectionEmpresa(id_company);
+    let SQL =
+      `SELECT id_cliente,nombre_cliente,identificacion FROM adm_cliente WHERE es_activo=1 AND es_proveedor=1 AND id_cliente >2;`;
+    let r = await conn.query2(SQL, {});
+    return r;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      // conn.end();
+      conn.release(); //release to pool
+    }
+  }
+};
 // Exportamos
 module.exports = $;
