@@ -760,5 +760,32 @@ router.post(
       fileManager.managerErrorApi(res, e);
     }
   });
+
+router.get(
+  "/get_cuenti_pay_boton_confirmar_pago",
+  queue_express({
+    activeLimit: 1,
+    queuedLimit: 1,
+    rejectHandler: (req, res) => {
+      // res.sendStatus(500);
+      res.status(500);
+      res.json({
+        status: 500,
+        error: "Intente más tarde cola de procesamiento muy llena test",
+      });
+    },
+  }),
+  async function (req, res) {
+    try {
+      let r = await objIntegratorTienddiBl.get_cuenti_pay_boton_confirmar_pago(
+        req.query.id,
+      );
+      res.json(r);
+    } catch (e) {
+      fileManager.managerErrorApi(res, e);
+    }
+  },
+);
+
 // Exportamos las funciones en un objeto
 module.exports = router;

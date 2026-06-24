@@ -3053,5 +3053,25 @@ $.listaProvedoresIsa = async (id_company) => {
     }
   }
 };
+
+$.get_cuenti_pay_boton_confirmar_pago = async (id) => {
+  let conn = null;
+  try {
+    console.log("traer conexion");
+    conn = await objGestorBd.getPool_bases();
+    let SQL =
+      "SELECT * FROM cuenti_pay_boton_confirmar_pago WHERE id=:id;";
+    const rows = await conn.query2(SQL, { id: id });
+    return rows;
+  } catch (err) {
+    console.log("error:" + err);
+    throw err;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      conn.end(); //cerrar conexion y regresarlo
+    }
+  }
+};
 // Exportamos
 module.exports = $;
