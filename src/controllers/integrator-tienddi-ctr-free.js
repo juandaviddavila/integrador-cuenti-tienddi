@@ -740,6 +740,43 @@ router.post(
 );
 
 router.post(
+  "/get_ordenes_compra_a_cantidad",
+  queue_express({
+    activeLimit: 1,
+    queuedLimit: 5,
+    rejectHandler: (req, res) => {
+      // res.sendStatus(500);
+      res.status(500);
+      res.json({
+        status: 500,
+        error: "Intente más tarde cola de procesamiento muy llena test",
+      });
+    },
+  }),
+  async function (req, res) {
+    try {
+      if (
+        req.headers["id-company"] == null ||
+        req.headers["id-company"] == undefined ||
+        req.headers["id-company"] == ""
+      ) {
+        res.json({
+          type: 0,
+          message: "id_company no existe",
+        });
+        return;
+      }
+      let r = await objIntegratorTienddiBl.get_ordenes_compra_a_cantidad(
+        req.headers["id-company"],
+        req.body.id_sucursal, req.body.id_producto
+      );
+      res.json(r);
+    } catch (e) {
+      fileManager.managerErrorApi(res, e);
+    }
+  },
+);
+router.post(
   "/consultar_empresa_sucursal",
   queue_express({
     activeLimit: 1,

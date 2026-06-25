@@ -2911,7 +2911,37 @@ WHERE dd.id_producto = :id_producto
     }
   }
 };
-
+$.get_ordenes_compra_a_cantidad = async (id_company, id_sucursal, id_producto) => {
+  let cache = "cache_ordenes_compra_cantidad_" + id_company + "_" + id_sucursal + "_" + id_producto;
+  let data_cache = await $.getFromCache(cache);
+  let conn = null;
+  try {
+    conn = await objGestorBd.getConnectionEmpresa(id_company);
+    let SQL =
+      `SELECT 
+    SUM(dd.cantidad) - SUM(dd.cantidad_original_pedido) AS cantidad
+FROM vent_detalle_documento dd
+STRAIGHT_JOIN vent_documento d 
+    ON d.id_documento = dd.id_documento
+WHERE dd.id_producto = :id_producto
+    AND dd.tasa_cumplimiento < 100
+    AND d.tipoDocumento = 23
+    AND d.es_nula = 0
+    AND d.es_activo = 1 AND d.id_sucursal=:id_sucursal;
+    `;
+    r = await conn.query2(SQL, { id_sucursal: id_sucursal, id_producto: id_producto });
+    return r;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      // conn.end();
+      conn.release(); //release to pool
+    }
+  }
+};
 $.consultar_empresa_sucursal = async (id_empresa, id_sucursal) => {
   let conn = null;
   try {
