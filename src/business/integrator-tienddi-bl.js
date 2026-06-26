@@ -3103,5 +3103,36 @@ $.get_cuenti_pay_boton_confirmar_pago = async (id) => {
     }
   }
 };
+
+$.listaSucursalesCache = async (id_company) => {
+  let cache = "cache_lista_sucursales_" + id_company;
+  let data_cache = await $.getFromCache(cache);
+  if (data_cache !== null) {
+    return data_cache;
+  }
+  let conn = null;
+  let r = null;
+  try {
+    conn = await objGestorBd.getConnectionEmpresa(id_company);
+    let SQL =
+      `SELECT id_sucursal,nombre_sucursal,nota,modificicar_precio_minimos_otras_sucursales,modificicar_descuento_maximo_otras_sucursales,actualizarPrecioVentaSucursales,
+activar_venta_compra_licores,actualizarPrecioCostoSucursales,vender_ip_estampilla,id_padre FROM adm_sucursal;`;
+    r = await conn.query2(SQL, {});
+    return r;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      // conn.end();
+      conn.release(); //release to pool
+    }
+    if (r !== null) {
+      await $.storeInCache(cache, r, (ttlInSeconds = 60 * 60)); //cache por 1 hora
+    }
+  }
+};
+
 // Exportamos
 module.exports = $;
