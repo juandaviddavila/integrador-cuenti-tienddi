@@ -93,7 +93,7 @@ $.get_imagen_base64 = async function (url) {
     // Handle Error Here
     console.error(err);
     try {
-    } catch (error) { }
+    } catch (error) {}
     throw err;
   }
 };
@@ -441,7 +441,7 @@ $.generate_product = async function (
       //agregar impuesto ya que precio_venta_online es con impuestos incluidos
       row.precio_venta_online ==
         row.precio_venta_online +
-        row.precio_venta_online * (row.valor_impuesto / 100);
+          row.precio_venta_online * (row.valor_impuesto / 100);
     }
   }
   //al precio  row.precio_venta_online quitarle la parte que es de impuestos
@@ -1136,7 +1136,7 @@ $.registrar_intencion_pago_cuenti_pay = async (data) => {
     console.log("traer conexion");
     conn = await objGestorBd.getPool_bases();
     let SQL =
-      "INSERT INTO boton_pago_intencion(id_empresa,id_transaccion,codigo,valor,url,x_gtm,id_sucursal)VALUES(:id_empresa,:id_transaccion,:codigo,:valor,:url,:x_gtm,:id_sucursal);";
+      "INSERT INTO boton_pago_intencion(id_empresa,id_transaccion,codigo,valor,url,x_gtm,id_sucursal,web_hook,convertir_remision_factura,id_consecutivo)VALUES(:id_empresa,:id_transaccion,:codigo,:valor,:url,:x_gtm,:id_sucursal,:web_hook,:convertir_remision_factura,:id_consecutivo);";
     await conn.query2(SQL, data);
   } catch (err) {
     console.log("error:" + err);
@@ -1189,8 +1189,45 @@ $.getPaymentLink_codigo = async (data) => {
     console.log("traer conexion");
     conn = await objGestorBd.getPool_bases();
     let SQL =
-      "SELECT id,id_empresa,id_transaccion,codigo,valor,es_activo,`url`,x_gtm,id_sucursal FROM boton_pago_intencion WHERE codigo=:codigo and es_activo=1;";
+      "SELECT convertir_remision_factura,id_consecutivo,id,id_empresa,id_transaccion,codigo,valor,es_activo,`url`,x_gtm,id_sucursal,web_hook,pago_ejecutado FROM boton_pago_intencion WHERE codigo=:codigo and es_activo=1;";
     return await conn.query2(SQL, { codigo: data });
+  } catch (err) {
+    console.log("error:" + err);
+    throw err;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      conn.end(); //cerrar conexion y regresarlo
+    }
+  }
+};
+$.getPaymentLink_codigo_pagado = async (data) => {
+  //recuperacion de link de pago
+  let conn = null;
+  try {
+    console.log("traer conexion");
+    conn = await objGestorBd.getPool_bases();
+    let SQL =
+      "SELECT convertir_remision_factura,id_consecutivo,id,id_empresa,id_transaccion,codigo,valor,es_activo,`url`,x_gtm,id_sucursal,web_hook,pago_ejecutado FROM boton_pago_intencion WHERE codigo=:codigo and pago_ejecutado=1;";
+    return await conn.query2(SQL, { codigo: data });
+  } catch (err) {
+    console.log("error:" + err);
+    throw err;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      conn.end(); //cerrar conexion y regresarlo
+    }
+  }
+};
+$.pago_ejecutadoPaymentLink = async (data) => {
+  //recuperacion de link de pago
+  let conn = null;
+  try {
+    console.log("traer conexion");
+    conn = await objGestorBd.getPool_bases();
+    let SQL = "UPDATE boton_pago_intencion SET pago_ejecutado=1 WHERE id=:id;";
+    return await conn.query2(SQL, data);
   } catch (err) {
     console.log("error:" + err);
     throw err;
@@ -1219,8 +1256,51 @@ $.deletePaymentLink = async (data) => {
     }
   }
 };
+$.dispararWebhook = async function (webHookUrl, payload = { type: 1 }) {
+  let webhookUrl = "";
+
+  try {
+    webhookUrl = typeof webHookUrl === "string" ? webHookUrl.trim() : "";
+
+    if (webhookUrl === "") {
+      return { type: 0, message: "URL de webhook inválida" };
+    }
+
+    let urlPattern;
+    try {
+      urlPattern = new URL(webhookUrl);
+    } catch (error) {
+      return { type: 0, message: "URL de webhook inválida" };
+    }
+
+    if (urlPattern.protocol !== "http:" && urlPattern.protocol !== "https:") {
+      return { type: 0, message: "URL de webhook inválida" };
+    }
+
+    await axios.post(webhookUrl, payload);
+    return { type: 1, message: "Webhook enviado correctamente" };
+  } catch (error) {
+    console.error(
+      "Error al enviar webhook: " + webhookUrl + " " + error.message,
+    );
+    throw new Error(
+      "Error al enviar webhook: " + webhookUrl + " " + error.message,
+    );
+  }
+};
 $.createPaymentLink = async (data) => {
   try {
+    data.web_hook = data.web_hook === undefined ? null : data.web_hook;
+
+    if (
+      data.convertir_remision_factura === null ||
+      data.convertir_remision_factura === undefined
+    ) {
+      data.convertir_remision_factura = 0;
+    }
+    if (data.id_consecutivo === null || data.id_consecutivo === undefined) {
+      data.id_consecutivo = 0;
+    }
     let data_ultimo = await $.getPaymentLink(data);
     if (data_ultimo.length > 0) {
       return { type: 1, url: data_ultimo[0].url };
@@ -1281,6 +1361,7 @@ $.createPaymentLink = async (data) => {
     const resp = await axios(config);
     data.url = resp.data.url;
     await $.registrar_intencion_pago_cuenti_pay(data);
+
     return { type: 1, url: resp.data.url };
   } catch (error) {
     console.error(error);
@@ -1403,7 +1484,7 @@ $.checkPayment = async (codigo, id_empresa, id_sucursal) => {
     let token = await $.getTokenEfimero(id_empresa);
     let config = {
       method: "get",
-      timeout: 1000 * 4, // Wait for 5 seconds
+      timeout: 1000 * 20, // Wait for 5 seconds
       url:
         "https://api-cuenti-pay.cuenti.co/api/v1/checkPayment?ref=" +
         codigo +
@@ -1493,6 +1574,15 @@ let validacionPagosCuentiPay = async function (
           url =
             "http://localhost:8084/jServerj4ErpPro/com/j4ErpPro/server/api_sin_token/agregarPagoTransacionCuentiPay2";
         }
+        if (
+          row.convertir_remision_factura === null ||
+          row.convertir_remision_factura === undefined
+        ) {
+          row.convertir_remision_factura = 0;
+        }
+        if (row.id_consecutivo === null || row.id_consecutivo === undefined) {
+          row.id_consecutivo = 0;
+        }
         //registramos el recibo de caja
         let config = {
           method: "post",
@@ -1518,6 +1608,8 @@ let validacionPagosCuentiPay = async function (
             amount: parseFloat(r_pago.payment.payload_extra.amount),
             x_gtm: row.x_gtm,
             gateway: r_pago.payment.payload_extra.gateway,
+            activo_conversion_remision_factura: row.convertir_remision_factura,
+            id_consecutivo: row.id_consecutivo,
           },
         };
         const resp = await axios(config);
@@ -1566,14 +1658,45 @@ $.webhookCuentiPay = async (_data, codigo) => {
         lst_configuraciones,
         lstPagos_pendientes[0],
       );
+      //   r = { type: 1 };
       if (r.type == 1 || r.type == 2) {
         //desactivar intenciones
+        await $.pago_ejecutadoPaymentLink({ id: lstPagos_pendientes[0].id });
         await $.deletePaymentLink({ id: lstPagos_pendientes[0].id });
+        //lamar a $.dispararWebhook
+        //lamar a $.dispararWebhook
+        let data_pagada = await $.getPaymentLink_codigo_pagado(codigo);
+        if (data_pagada.length > 0) {
+          data_pagada = data_pagada[0];
+          if (
+            data_pagada.web_hook !== null &&
+            data_pagada.web_hook !== undefined
+          ) {
+            const resultado = await $.dispararWebhook(data_pagada.web_hook, {
+              type: 1,
+            });
+            console.log(resultado);
+          }
+        }
         return { type: 1 };
       } else {
         return r;
       }
     } else {
+      //lamar a $.dispararWebhook
+      let data_pagada = await $.getPaymentLink_codigo_pagado(codigo);
+      if (data_pagada.length > 0) {
+        data_pagada = data_pagada[0];
+        if (
+          data_pagada.web_hook !== null &&
+          data_pagada.web_hook !== undefined
+        ) {
+          const resultado = await $.dispararWebhook(data_pagada.web_hook, {
+            type: 1,
+          });
+          console.log(resultado);
+        }
+      }
       return { type: 1 };
     }
   } catch (error) {
@@ -2458,7 +2581,7 @@ $.valiadarRangosDeFechasDeVentasCierreCaja = async (
 INNER JOIN transacion_encabezado_ext ext ON(t.id_transacion=ext.id_transacion)
 WHERE ext.es_conciliado=0 AND t.id_empleado=:id_empleado AND t.es_nula=0 and t.id_sucursal=:id_sucursal and t.tipoDocumento in(1,9,2,6);`;
 
-    SQL = `SELECT STRAIGHT_JOIN MIN(t.fecha_real) AS fecha_minima_venta, now()AS fecha_maxima_venta FROM transacion_encabezado t 
+    SQL = `SELECT STRAIGHT_JOIN MIN(t.fecha_registro) AS fecha_minima_venta, now()AS fecha_maxima_venta FROM transacion_encabezado t 
 INNER JOIN transacion_encabezado_ext ext ON(t.id_transacion=ext.id_transacion)
 WHERE ext.es_conciliado=0 AND t.id_empleado=:id_empleado AND t.es_nula=0 and t.id_sucursal=:id_sucursal;`;
     if (id_empleado == 0) {
@@ -2880,14 +3003,23 @@ $.lista_empresas_id = async (id_empresa) => {
   }
 };
 
-$.get_ordenes_compra_interna_cantidad = async (id_company, id_sucursal, id_producto) => {
-  let cache = "cache_ordenes_compra_interna_cantidad_" + id_company + "_" + id_sucursal + "_" + id_producto;
+$.get_ordenes_compra_interna_cantidad = async (
+  id_company,
+  id_sucursal,
+  id_producto,
+) => {
+  let cache =
+    "cache_ordenes_compra_interna_cantidad_" +
+    id_company +
+    "_" +
+    id_sucursal +
+    "_" +
+    id_producto;
   let data_cache = await $.getFromCache(cache);
   let conn = null;
   try {
     conn = await objGestorBd.getConnectionEmpresa(id_company);
-    let SQL =
-      `SELECT 
+    let SQL = `SELECT 
     SUM(dd.cantidad) - SUM(dd.cantidad_original_pedido) AS cantidad
 FROM vent_detalle_documento dd
 STRAIGHT_JOIN vent_documento d 
@@ -2898,7 +3030,10 @@ WHERE dd.id_producto = :id_producto
     AND d.es_nula = 0
     AND d.es_activo = 1 AND d.id_sucursal=:id_sucursal;
     `;
-    r = await conn.query2(SQL, { id_sucursal: id_sucursal, id_producto: id_producto });
+    r = await conn.query2(SQL, {
+      id_sucursal: id_sucursal,
+      id_producto: id_producto,
+    });
     return r;
   } catch (error) {
     console.error(error);
@@ -2911,14 +3046,23 @@ WHERE dd.id_producto = :id_producto
     }
   }
 };
-$.get_ordenes_compra_a_cantidad = async (id_company, id_sucursal, id_producto) => {
-  let cache = "cache_ordenes_compra_cantidad_" + id_company + "_" + id_sucursal + "_" + id_producto;
+$.get_ordenes_compra_a_cantidad = async (
+  id_company,
+  id_sucursal,
+  id_producto,
+) => {
+  let cache =
+    "cache_ordenes_compra_cantidad_" +
+    id_company +
+    "_" +
+    id_sucursal +
+    "_" +
+    id_producto;
   let data_cache = await $.getFromCache(cache);
   let conn = null;
   try {
     conn = await objGestorBd.getConnectionEmpresa(id_company);
-    let SQL =
-      `SELECT 
+    let SQL = `SELECT 
     SUM(dd.cantidad) - SUM(dd.cantidad_original_pedido) AS cantidad
 FROM vent_detalle_documento dd
 STRAIGHT_JOIN vent_documento d 
@@ -2929,7 +3073,10 @@ WHERE dd.id_producto = :id_producto
     AND d.es_nula = 0
     AND d.es_activo = 1 AND d.id_sucursal=:id_sucursal;
     `;
-    r = await conn.query2(SQL, { id_sucursal: id_sucursal, id_producto: id_producto });
+    r = await conn.query2(SQL, {
+      id_sucursal: id_sucursal,
+      id_producto: id_producto,
+    });
     return r;
   } catch (error) {
     console.error(error);
@@ -2966,16 +3113,19 @@ $.consultar_empresa_sucursal = async (id_empresa, id_sucursal) => {
         }
       }
     }
-    SQL = 'SELECT id_sector_empresa,nit_empresa,nombre_empresa,ciudad,departamento,pais  FROM empresas WHERE id_empresa=:id_empresa;';
+    SQL =
+      "SELECT id_sector_empresa,nit_empresa,nombre_empresa,ciudad,departamento,pais  FROM empresas WHERE id_empresa=:id_empresa;";
     rows = await conn.query2(SQL, { id_empresa: id_empresa });
     return {
-      id_empresa_hija: id_empresa_hija, id_empresa: id_empresa, id_sucursal: id_sucursal,
+      id_empresa_hija: id_empresa_hija,
+      id_empresa: id_empresa,
+      id_sucursal: id_sucursal,
       nit_empresa: rows[0].nit_empresa,
       nombre_empresa: rows[0].nombre_empresa,
       ciudad: rows[0].ciudad,
       departamento: rows[0].departamento,
       pais: rows[0].pais,
-      id_sector_empresa: rows[0].id_sector_empresa
+      id_sector_empresa: rows[0].id_sector_empresa,
     };
   } catch (err) {
     console.log("error:" + err);
@@ -2989,10 +3139,7 @@ $.consultar_empresa_sucursal = async (id_empresa, id_sucursal) => {
 };
 $.consultar_empresa_sucursal_moneda = async (id_empresa, id_sucursal) => {
   let cache =
-    "cache_consultar_empresa_sucursal_moneda_" +
-    id_empresa +
-    "_" +
-    id_sucursal;
+    "cache_consultar_empresa_sucursal_moneda_" + id_empresa + "_" + id_sucursal;
   let data_cache = await $.getFromCache(cache);
   if (data_cache !== null) {
     return data_cache;
@@ -3038,21 +3185,36 @@ $.consultar_empresa_sucursal_moneda = async (id_empresa, id_sucursal) => {
   }
 };
 
-$.consultarConsecutivosAndEmpleado = async (id_company, id_empleado, id_sucursal) => {
+$.consultarConsecutivosAndEmpleado = async (
+  id_company,
+  id_empleado,
+  id_sucursal,
+) => {
   let conn = null;
   try {
     conn = await objGestorBd.getConnectionEmpresa(id_company);
-    let SQL =
-      `SELECT c.id_sucursal,c.id_consecutivo,c.nombre_consecutivo,c.prefijo,c.es_factura_electronica,c.fecha_vencimiento,c.finaliza,c.numero+1 AS numero
+    let SQL = `SELECT c.id_sucursal,c.id_consecutivo,c.nombre_consecutivo,c.prefijo,c.es_factura_electronica,c.fecha_vencimiento,c.finaliza,c.numero+1 AS numero
 FROM adm_consecutivo_empleado ce INNER JOIN adm_consecutivos c ON(c.id_consecutivo=ce.id_consecutivo) 
 WHERE c.es_activo=1 AND ce.es_activo=1 AND ce.id_empleado=:id_empleado AND (c.id_sucursal=:id_sucursal OR c.id_sucursal IS NULL)  ORDER BY c.id_sucursal DESC;
     `;
-    let r = await conn.query2(SQL, { id_sucursal: id_sucursal, id_empleado: id_empleado });
-    SQL = 'SELECT id_usuario_portal FROM adm_empleados WHERE id_empleado=:id_empleado;';
+    let r = await conn.query2(SQL, {
+      id_sucursal: id_sucursal,
+      id_empleado: id_empleado,
+    });
+    SQL =
+      "SELECT id_usuario_portal FROM adm_empleados WHERE id_empleado=:id_empleado;";
     let r1 = await conn.query2(SQL, { id_empleado: id_empleado });
 
-    let r_permiso = await $.getPermiso(id_company, r1[0].id_usuario_portal, 140);
-    return { consecutivo: r, id_usuario: r1[0].id_usuario_portal, r_permiso: r_permiso };
+    let r_permiso = await $.getPermiso(
+      id_company,
+      r1[0].id_usuario_portal,
+      140,
+    );
+    return {
+      consecutivo: r,
+      id_usuario: r1[0].id_usuario_portal,
+      r_permiso: r_permiso,
+    };
   } catch (error) {
     console.error(error);
     throw error;
@@ -3068,8 +3230,7 @@ $.listaProvedoresIsa = async (id_company) => {
   let conn = null;
   try {
     conn = await objGestorBd.getConnectionEmpresa(id_company);
-    let SQL =
-      `SELECT id_cliente,nombre_cliente,identificacion FROM adm_cliente WHERE es_activo=1 AND es_proveedor=1 AND id_cliente >2;`;
+    let SQL = `SELECT id_cliente,nombre_cliente,identificacion FROM adm_cliente WHERE es_activo=1 AND es_proveedor=1 AND id_cliente >2;`;
     let r = await conn.query2(SQL, {});
     return r;
   } catch (error) {
@@ -3089,8 +3250,7 @@ $.get_cuenti_pay_boton_confirmar_pago = async (id) => {
   try {
     console.log("traer conexion");
     conn = await objGestorBd.getPool_bases();
-    let SQL =
-      "SELECT * FROM cuenti_pay_boton_confirmar_pago WHERE id=:id;";
+    let SQL = "SELECT * FROM cuenti_pay_boton_confirmar_pago WHERE id=:id;";
     const rows = await conn.query2(SQL, { id: id });
     return rows;
   } catch (err) {
@@ -3114,8 +3274,7 @@ $.listaSucursalesCache = async (id_company) => {
   let r = null;
   try {
     conn = await objGestorBd.getConnectionEmpresa(id_company);
-    let SQL =
-      `SELECT id_sucursal,nombre_sucursal,nota,modificicar_precio_minimos_otras_sucursales,modificicar_descuento_maximo_otras_sucursales,actualizarPrecioVentaSucursales,
+    let SQL = `SELECT id_sucursal,nombre_sucursal,nota,modificicar_precio_minimos_otras_sucursales,modificicar_descuento_maximo_otras_sucursales,actualizarPrecioVentaSucursales,
 activar_venta_compra_licores,actualizarPrecioCostoSucursales,vender_ip_estampilla,id_padre FROM adm_sucursal;`;
     r = await conn.query2(SQL, {});
     return r;

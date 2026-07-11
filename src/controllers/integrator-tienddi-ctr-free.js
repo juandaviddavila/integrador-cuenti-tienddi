@@ -6,6 +6,17 @@ let fileManager = require("utilities_cuenti/vendor/fileManager");
 
 const objIntegratorTienddiBl = require("../business/integrator-tienddi-bl");
 let queue_express = require("express-queue");
+
+router.post("/web_hook_prueba/:codigo", async function (req, res) {
+  try {
+    console.log(req.body);
+    console.log("codigo:" + req.params.codigo);
+    res.json({ type: 1, message: "ok" });
+  } catch (e) {
+    fileManager.managerErrorApi(res, e);
+  }
+});
+
 router.post("/get_url_store_cuenti", async function (req, res) {
   try {
     let r = await objIntegratorTienddiBl.get_url_store_cuenti(
@@ -70,8 +81,8 @@ router.get(
       res.setHeader(
         "Content-Disposition",
         "attachment; filename=informe_ventas_" +
-        req.params.id_company +
-        ".xlsx",
+          req.params.id_company +
+          ".xlsx",
       );
 
       res.send(data.content);
@@ -119,8 +130,8 @@ router.get(
         res.setHeader(
           "Content-Disposition",
           "attachment; filename=informe_ventas_" +
-          req.params.id_company +
-          ".xlsx",
+            req.params.id_company +
+            ".xlsx",
         );
 
         res.send(data.content);
@@ -356,7 +367,7 @@ router.get("/get_token_efimero/:clave/:id_company", async function (req, res) {
     let ip = req.connection.remoteAddress || req.socket.remoteAddress;
     try {
       ip = req.header("x-forwarded-for").split(",")[0].trim();
-    } catch (error) { }
+    } catch (error) {}
     console.log("IP Solicitud token efimero: " + ip);
     ip = ip.split(",")[0].trim();
     let ips = process.env.ips_autorizadas.split(";");
@@ -700,7 +711,6 @@ router.get(
   },
 );
 
-
 router.post(
   "/get_ordenes_compra_interna_cantidad",
   queue_express({
@@ -730,7 +740,8 @@ router.post(
       }
       let r = await objIntegratorTienddiBl.get_ordenes_compra_interna_cantidad(
         req.headers["id-company"],
-        req.body.id_sucursal, req.body.id_producto
+        req.body.id_sucursal,
+        req.body.id_producto,
       );
       res.json(r);
     } catch (e) {
@@ -768,7 +779,8 @@ router.post(
       }
       let r = await objIntegratorTienddiBl.get_ordenes_compra_a_cantidad(
         req.headers["id-company"],
-        req.body.id_sucursal, req.body.id_producto
+        req.body.id_sucursal,
+        req.body.id_producto,
       );
       res.json(r);
     } catch (e) {
@@ -789,14 +801,19 @@ router.post(
         error: "Intente más tarde cola de procesamiento muy llena test",
       });
     },
-  }), async function (req, res) {
+  }),
+  async function (req, res) {
     try {
-      let r = await objIntegratorTienddiBl.consultar_empresa_sucursal(req.body.id_empresa, req.body.id_sucursal);
+      let r = await objIntegratorTienddiBl.consultar_empresa_sucursal(
+        req.body.id_empresa,
+        req.body.id_sucursal,
+      );
       res.json(r);
     } catch (e) {
       fileManager.managerErrorApi(res, e);
     }
-  });
+  },
+);
 
 router.get(
   "/get_cuenti_pay_boton_confirmar_pago",
@@ -824,7 +841,6 @@ router.get(
   },
 );
 
-
 router.get(
   "/listaSucursalesCache",
   queue_express({
@@ -842,7 +858,7 @@ router.get(
   async function (req, res) {
     try {
       let r = await objIntegratorTienddiBl.listaSucursalesCache(
-        req.query.id_empresa
+        req.query.id_empresa,
       );
       res.json(r);
     } catch (e) {
