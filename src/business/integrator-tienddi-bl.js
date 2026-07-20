@@ -93,7 +93,7 @@ $.get_imagen_base64 = async function (url) {
     // Handle Error Here
     console.error(err);
     try {
-    } catch (error) {}
+    } catch (error) { }
     throw err;
   }
 };
@@ -441,7 +441,7 @@ $.generate_product = async function (
       //agregar impuesto ya que precio_venta_online es con impuestos incluidos
       row.precio_venta_online ==
         row.precio_venta_online +
-          row.precio_venta_online * (row.valor_impuesto / 100);
+        row.precio_venta_online * (row.valor_impuesto / 100);
     }
   }
   //al precio  row.precio_venta_online quitarle la parte que es de impuestos
@@ -1545,6 +1545,8 @@ let validacionPagosCuentiPay = async function (
   lst_configuraciones,
   row,
 ) {
+  let id_empresa = null;
+  let url_emitir_fe = null;
   //validar cada referencia si esta ya esta pagada
   let r_pago = await $.checkPayment(
     row.codigo,
@@ -1558,6 +1560,7 @@ let validacionPagosCuentiPay = async function (
       let payment_medium_id = 1;
       let cost_center_id = 1;
       let employee_id = 1;
+
       for (let conf of lst_configuraciones.payment_gateways) {
         if (conf.payment_gateway.code == r_pago.payment.payload_extra.gateway) {
           bank_id = conf.bank_id;
@@ -1569,11 +1572,17 @@ let validacionPagosCuentiPay = async function (
       }
       try {
         let url =
-          "http://solo-restaurantes.interna.cuenti.com:9855/jServerj4ErpPro/com/j4ErpPro/server/api_sin_token/agregarPagoTransacionCuentiPay2";
+          "http://solo-restaurantes.interna.cuenti.com/jServerj4ErpPro/com/j4ErpPro/server/api_sin_token/agregarPagoTransacionCuentiPay2";
+
+        url_emitir_fe = `https://balancer-1.cuenti.co/jServerj4ErpPro/api/token/generarFacturaElectronica/${row.id_transaccion}`;
+
         if (process.env.environment_data_base === "dev") {
           url =
             "http://localhost:8084/jServerj4ErpPro/com/j4ErpPro/server/api_sin_token/agregarPagoTransacionCuentiPay2";
+          url_emitir_fe = `http://localhost:8084/jServerj4ErpPro/api/token/generarFacturaElectronica/${row.id_transaccion}`;
+
         }
+
         if (
           row.convertir_remision_factura === null ||
           row.convertir_remision_factura === undefined
@@ -1583,10 +1592,11 @@ let validacionPagosCuentiPay = async function (
         if (row.id_consecutivo === null || row.id_consecutivo === undefined) {
           row.id_consecutivo = 0;
         }
+        id_empresa = row.id_empresa;
         //registramos el recibo de caja
         let config = {
           method: "post",
-          timeout: 1000 * 4, // Wait for 5 seconds
+          timeout: 1000 * 15, // Wait for 5 seconds
           url: url,
           headers: {
             Accept: "application/json",
@@ -1628,6 +1638,30 @@ let validacionPagosCuentiPay = async function (
             status: error.response.status,
             message: error.response.data.message,
           };
+        }
+      } finally {
+        //emitir fe
+        if (url_emitir_fe !== null && id_empresa !== null) {
+          try {
+            let api = await $.get_token_api(id_empresa);
+            let config_emitir_fe = {
+              method: "get",
+              timeout: 1000 * 50, // Wait for 5 seconds
+              url: url_emitir_fe,
+              headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json",
+                "X-Auth-Token-Empresa": id_empresa,
+                'X-Auth-Token-api': api,
+                'x-id-empleado': 1,
+                'X-gtm': 'GMT-0500'
+              }
+            };
+            const resp_fe = await axios(config_emitir_fe);
+            console.log(resp_fe.data);
+          } catch (error) {
+            console.error("Error al emitir factura electrónica: " + error.message);
+          }
         }
       }
     }
