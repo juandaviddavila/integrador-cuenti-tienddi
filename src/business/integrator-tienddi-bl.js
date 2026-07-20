@@ -1641,28 +1641,37 @@ let validacionPagosCuentiPay = async function (
         }
       } finally {
         //emitir fe
-        if (url_emitir_fe !== null && id_empresa !== null) {
+        setTimeout(async function () {
+          if (url_emitir_fe === null || id_empresa === null) {
+            return;
+          }
+
           try {
-            let api = await $.get_token_api(id_empresa);
-            let config_emitir_fe = {
+            const api = await $.get_token_api(id_empresa);
+
+            const resp_fe = await axios({
               method: "get",
-              timeout: 1000 * 50, // Wait for 5 seconds
+              timeout: 1000 * 50,
               url: url_emitir_fe,
               headers: {
                 Accept: "application/json",
                 "Content-Type": "application/json",
                 "X-Auth-Token-Empresa": id_empresa,
-                'X-Auth-Token-api': api,
-                'x-id-empleado': 1,
-                'X-gtm': 'GMT-0500'
+                "X-Auth-Token-api": api,
+                "x-id-empleado": 1,
+                "X-gtm": "GMT-0500"
               }
-            };
-            const resp_fe = await axios(config_emitir_fe);
+            });
+
             console.log(resp_fe.data);
           } catch (error) {
-            console.error("Error al emitir factura electrónica: " + error.message);
+            console.error(
+              "Error al emitir factura electrónica:",
+              error.response?.data || error.message
+            );
           }
-        }
+        }, 1000 * 60);
+        //fin de emitir fe
       }
     }
   }
