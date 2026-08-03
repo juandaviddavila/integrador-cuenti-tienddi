@@ -81,8 +81,8 @@ router.get(
       res.setHeader(
         "Content-Disposition",
         "attachment; filename=informe_ventas_" +
-          req.params.id_company +
-          ".xlsx",
+        req.params.id_company +
+        ".xlsx",
       );
 
       res.send(data.content);
@@ -130,8 +130,8 @@ router.get(
         res.setHeader(
           "Content-Disposition",
           "attachment; filename=informe_ventas_" +
-            req.params.id_company +
-            ".xlsx",
+          req.params.id_company +
+          ".xlsx",
         );
 
         res.send(data.content);
@@ -367,7 +367,7 @@ router.get("/get_token_efimero/:clave/:id_company", async function (req, res) {
     let ip = req.connection.remoteAddress || req.socket.remoteAddress;
     try {
       ip = req.header("x-forwarded-for").split(",")[0].trim();
-    } catch (error) {}
+    } catch (error) { }
     console.log("IP Solicitud token efimero: " + ip);
     ip = ip.split(",")[0].trim();
     let ips = process.env.ips_autorizadas.split(";");
@@ -659,6 +659,33 @@ router.get(
 
 router.get(
   "/actualizar_costos_caso_punto_caliente",
+  queue_express({
+    activeLimit: 1,
+    queuedLimit: 1,
+    rejectHandler: (req, res) => {
+      // res.sendStatus(500);
+      res.status(500);
+      res.json({
+        status: 500,
+        error: "Intente más tarde cola de procesamiento muy llena test",
+      });
+    },
+  }),
+  async function (req, res) {
+    try {
+      let r = await objIntegratorTienddiBl.actualizarCostosCasoPuntoCaliente(
+        req.query.id_empresa,
+        req.query.id_centro_costo,
+        req.query.id_sucursal,
+      );
+      res.json(r);
+    } catch (e) {
+      fileManager.managerErrorApi(res, e);
+    }
+  },
+);
+router.get(
+  "/actualizar_costos_caso_compras",
   queue_express({
     activeLimit: 1,
     queuedLimit: 1,

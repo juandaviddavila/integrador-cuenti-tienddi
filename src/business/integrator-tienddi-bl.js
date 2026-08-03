@@ -3000,6 +3000,47 @@ WHERE e.id_sucursal = :id_sucursal
     }
   }
 };
+$.actualizarCostosCasoCompras = async (
+  id_company,
+  id_centro_costo,
+  id_sucursal,
+) => {
+  let conn = null;
+  try {
+    conn = await objGestorBd.getConnectionEmpresa(id_company);
+    let SQL =
+      "UPDATE transacion_encabezado SET id_centro_costo=:id_centro_costo WHERE id_sucursal=:id_sucursal AND tipoDocumento=1";
+    let r = await conn.query2(SQL, {
+      id_centro_costo: id_centro_costo,
+      id_sucursal: id_sucursal,
+    });
+
+    SQL = `UPDATE transacion_detalle d
+JOIN transacion_encabezado e 
+  ON e.id_transacion = d.id_transacion
+SET d.id_centro_costo = :id_centro_costo
+WHERE e.id_sucursal = :id_sucursal
+  AND e.tipoDocumento = 7
+  AND d.tipoDocumento = 7;`;
+    let r2 = await conn.query2(SQL, {
+      id_centro_costo: id_centro_costo,
+      id_sucursal: id_sucursal,
+    });
+    return {
+      afecatodTransaciones: r.affectedRows,
+      afectadoDetalle: r2.affectedRows,
+    };
+  } catch (error) {
+    console.error(error);
+    throw error;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      // conn.end();
+      conn.release(); //release to pool
+    }
+  }
+};
 $.lista_empresas = async () => {
   let cache = "cache_lista_empresas_basico";
   let data_cache = await $.getFromCache(cache);
