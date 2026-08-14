@@ -2626,7 +2626,7 @@ WHERE ext.es_conciliado=0 AND t.id_empleado=:id_empleado AND t.es_nula=0 and t.i
 
     SQL = `SELECT STRAIGHT_JOIN MIN(t.fecha_registro) AS fecha_minima_venta, now()AS fecha_maxima_venta FROM transacion_encabezado t 
 INNER JOIN transacion_encabezado_ext ext ON(t.id_transacion=ext.id_transacion)
-WHERE ext.es_conciliado=0 AND t.id_empleado=:id_empleado AND t.es_nula=0 and t.id_sucursal=:id_sucursal;`;
+WHERE ext.es_conciliado=0 AND t.id_empleado=:id_empleado and t.id_sucursal=:id_sucursal  and t.tipoDocumento in(1,9,2,6);`;
     if (id_empleado == 0) {
       SQL = SQL.replace("AND t.id_empleado=:id_empleado", "");
     }
