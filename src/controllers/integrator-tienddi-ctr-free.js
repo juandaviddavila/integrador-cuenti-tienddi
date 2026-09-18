@@ -81,8 +81,8 @@ router.get(
       res.setHeader(
         "Content-Disposition",
         "attachment; filename=informe_ventas_" +
-        req.params.id_company +
-        ".xlsx",
+          req.params.id_company +
+          ".xlsx",
       );
 
       res.send(data.content);
@@ -130,8 +130,8 @@ router.get(
         res.setHeader(
           "Content-Disposition",
           "attachment; filename=informe_ventas_" +
-          req.params.id_company +
-          ".xlsx",
+            req.params.id_company +
+            ".xlsx",
         );
 
         res.send(data.content);
@@ -367,7 +367,7 @@ router.get("/get_token_efimero/:clave/:id_company", async function (req, res) {
     let ip = req.connection.remoteAddress || req.socket.remoteAddress;
     try {
       ip = req.header("x-forwarded-for").split(",")[0].trim();
-    } catch (error) { }
+    } catch (error) {}
     console.log("IP Solicitud token efimero: " + ip);
     ip = ip.split(",")[0].trim();
     let ips = process.env.ips_autorizadas.split(";");
@@ -886,6 +886,42 @@ router.get(
     try {
       let r = await objIntegratorTienddiBl.listaSucursalesCache(
         req.query.id_empresa,
+      );
+      res.json(r);
+    } catch (e) {
+      fileManager.managerErrorApi(res, e);
+    }
+  },
+);
+
+router.get(
+  "/insert_cola_empresa",
+  queue_express({
+    activeLimit: 1,
+    queuedLimit: 5,
+    rejectHandler: (req, res) => {
+      // res.sendStatus(500);
+      res.status(500);
+      res.json({
+        status: 500,
+        error: "Intente más tarde cola de procesamiento muy llena test",
+      });
+    },
+  }),
+  async function (req, res) {
+    try {
+      if (
+        req.headers["clave"] !==
+        "jdoaosdoieokoi4oi4o34o234sd485484DWjhhcv5897444343434==="
+      ) {
+        res.json({
+          type: 0,
+          message: "clave mala",
+        });
+      }
+      let r = await objIntegratorTienddiBl.insert_cola_empresa(
+        req.headers["id-company"],
+        req.query.evento,
       );
       res.json(r);
     } catch (e) {

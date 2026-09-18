@@ -131,7 +131,10 @@ router.get("/lista_empresas", async function (req, res) {
 
 router.post("/consultar_empresa_sucursal", async function (req, res) {
   try {
-    let r = await objIntegratorTienddiBl.consultar_empresa_sucursal(req.headers["id-company"], req.body.id_sucursal);
+    let r = await objIntegratorTienddiBl.consultar_empresa_sucursal(
+      req.headers["id-company"],
+      req.body.id_sucursal,
+    );
     res.json(r);
   } catch (e) {
     fileManager.managerErrorApi(res, e);
@@ -139,7 +142,10 @@ router.post("/consultar_empresa_sucursal", async function (req, res) {
 });
 router.post("/consultar_empresa_sucursal_moneda", async function (req, res) {
   try {
-    let r = await objIntegratorTienddiBl.consultar_empresa_sucursal_moneda(req.headers["id-company"], req.body.id_sucursal);
+    let r = await objIntegratorTienddiBl.consultar_empresa_sucursal_moneda(
+      req.headers["id-company"],
+      req.body.id_sucursal,
+    );
     res.json(r);
   } catch (e) {
     fileManager.managerErrorApi(res, e);
@@ -147,7 +153,11 @@ router.post("/consultar_empresa_sucursal_moneda", async function (req, res) {
 });
 router.post("/consultarConsecutivosAndEmpleado", async function (req, res) {
   try {
-    let r = await objIntegratorTienddiBl.consultarConsecutivosAndEmpleado(req.headers["id-company"], req.body.id_empleado, req.body.id_sucursal);
+    let r = await objIntegratorTienddiBl.consultarConsecutivosAndEmpleado(
+      req.headers["id-company"],
+      req.body.id_empleado,
+      req.body.id_sucursal,
+    );
     res.json(r);
   } catch (e) {
     fileManager.managerErrorApi(res, e);
@@ -169,12 +179,15 @@ router.get(
   }),
   async function (req, res) {
     try {
-      let r = await objIntegratorTienddiBl.listaProvedoresIsa(req.headers["id-company"]);
+      let r = await objIntegratorTienddiBl.listaProvedoresIsa(
+        req.headers["id-company"],
+      );
       res.json(r);
     } catch (e) {
       fileManager.managerErrorApi(res, e);
     }
   },
 );
+
 // Exportamos las funciones en un objeto
 module.exports = router;

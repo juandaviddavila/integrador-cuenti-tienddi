@@ -93,7 +93,7 @@ $.get_imagen_base64 = async function (url) {
     // Handle Error Here
     console.error(err);
     try {
-    } catch (error) { }
+    } catch (error) {}
     throw err;
   }
 };
@@ -441,7 +441,7 @@ $.generate_product = async function (
       //agregar impuesto ya que precio_venta_online es con impuestos incluidos
       row.precio_venta_online ==
         row.precio_venta_online +
-        row.precio_venta_online * (row.valor_impuesto / 100);
+          row.precio_venta_online * (row.valor_impuesto / 100);
     }
   }
   //al precio  row.precio_venta_online quitarle la parte que es de impuestos
@@ -1580,7 +1580,6 @@ let validacionPagosCuentiPay = async function (
           url =
             "http://localhost:8084/jServerj4ErpPro/com/j4ErpPro/server/api_sin_token/agregarPagoTransacionCuentiPay2";
           url_emitir_fe = `http://localhost:8084/jServerj4ErpPro/api/token/generarFacturaElectronica/${row.id_transaccion}`;
-
         }
 
         if (
@@ -1659,15 +1658,15 @@ let validacionPagosCuentiPay = async function (
                 "X-Auth-Token-Empresa": id_empresa,
                 "X-Auth-Token-api": api,
                 "x-id-empleado": 1,
-                "X-gtm": "GMT-0500"
-              }
+                "X-gtm": "GMT-0500",
+              },
             });
 
             console.log(resp_fe.data);
           } catch (error) {
             console.error(
               "Error al emitir factura electrónica:",
-              error.response?.data || error.message
+              error.response?.data || error.message,
             );
           }
         }, 1000 * 60);
@@ -3377,5 +3376,32 @@ activar_venta_compra_licores,actualizarPrecioCostoSucursales,vender_ip_estampill
   }
 };
 
+$.insert_cola_empresa = async (id_empresa, evento) => {
+  let conn = null;
+  try {
+    console.log("traer conexion");
+    conn = await objGestorBd.getPool_bases();
+    const SQL = `
+        INSERT IGNORE INTO log_transacciones.cola_empresa (id_empresa, evento)
+        VALUES (:id_empresa, :evento);
+      `;
+    const result = await conn.query2(SQL, {
+      id_empresa: id_empresa,
+      evento: evento,
+    });
+    if (result.affectedRows === 0) {
+      return { type: 1 }; // ya existía
+    }
+    return { type: 1 }; // insertó
+  } catch (err) {
+    console.log("error:" + err);
+    throw err;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      conn.end();
+    }
+  }
+};
 // Exportamos
 module.exports = $;
