@@ -46,6 +46,14 @@ router.post("/get_url_store_cuenti", async function (req, res) {
     fileManager.managerErrorApi(res, e);
   }
 });
+router.post("/buscar_empresa", async function (req, res) {
+  try {
+    let r = await objIntegratorTienddiBl.buscar_empresa(req.body);
+    res.json(r);
+  } catch (e) {
+    fileManager.managerErrorApi(res, e);
+  }
+});
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 router.post(
   "/webhook_parking/:id_company/:id_sucursal/:id_empleado",

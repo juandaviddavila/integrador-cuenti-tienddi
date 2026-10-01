@@ -391,6 +391,48 @@ router.get("/get_token_efimero/:clave/:id_company", async function (req, res) {
   }
 });
 
+router.get("/get_token_api/:clave/:id_company", async function (req, res) {
+  try {
+    if (
+      req.params.clave !==
+      "jdoaosdoieokoi4oi4o34o234sd485484DWjhhcv5897444343434==="
+    ) {
+      res.json({
+        type: 0,
+        message: "clave mala",
+      });
+    }
+    //validar ip
+    //console.log(req.session.id);
+    let ip = req.connection.remoteAddress || req.socket.remoteAddress;
+    try {
+      ip = req.header("x-forwarded-for").split(",")[0].trim();
+    } catch (error) {}
+    console.log("IP Solicitud token efimero: " + ip);
+    ip = ip.split(",")[0].trim();
+    let ips = process.env.ips_autorizadas.split(";");
+    let sw = false;
+    for (let i = 0; i < ips.length; i++) {
+      if (ips[i] === ip) {
+        sw = true;
+        break;
+      }
+    }
+    if (!sw) {
+      res.status(203);
+      res.json({ mensaje: "ip " + ip + " no autorizada" });
+      return;
+    }
+
+    let r = await objIntegratorTienddiBl.get_token_api_get(
+      req.params.id_company,
+    );
+    res.json({ t: r });
+  } catch (e) {
+    fileManager.managerErrorApi(res, e);
+  }
+});
+
 router.post(
   "/valiadarRangosDeFechasDeVentasCierreCaja/:clave",
   queue_express({
@@ -923,6 +965,39 @@ router.get(
         req.headers["id-company"],
         req.query.evento,
       );
+      res.json(r);
+    } catch (e) {
+      fileManager.managerErrorApi(res, e);
+    }
+  },
+);
+
+router.get(
+  "/buscar_empresa",
+  queue_express({
+    activeLimit: 1,
+    queuedLimit: 5,
+    rejectHandler: (req, res) => {
+      res.status(500);
+      res.json({
+        status: 500,
+        error: "Intente más tarde cola de procesamiento muy llena test",
+      });
+    },
+  }),
+  async function (req, res) {
+    try {
+      if (
+        req.headers["clave"] !==
+        "jdoaosdoieokoi4oi4o34o234sd485484DWjhhcv5897444343434==="
+      ) {
+        res.json({
+          type: 0,
+          message: "clave mala",
+        });
+        return;
+      }
+      let r = await objIntegratorTienddiBl.buscar_empresa(req.query);
       res.json(r);
     } catch (e) {
       fileManager.managerErrorApi(res, e);

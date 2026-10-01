@@ -772,6 +772,68 @@ $.get_url_store_cuenti = async (id_company, data) => {
     }
   }
 };
+function textoBusqueda(valor) {
+  if (valor === undefined || valor === null) {
+    return "";
+  }
+  return String(valor).trim();
+}
+function terminoLike(valor) {
+  return valor.replace(/[\\%_]/g, (ch) => "\\" + ch);
+}
+$.buscar_empresa = async (data = {}) => {
+  const idTexto = textoBusqueda(data.id_empresa);
+  const email = textoBusqueda(data.email_documentos ?? data.email);
+  const telefono = textoBusqueda(data.telefono);
+  const nombre = textoBusqueda(data.nombre_empresa);
+  let sentencia = "";
+  let params = null;
+  let cache = "";
+  if (idTexto) {
+    const id = Number(idTexto);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      return [];
+    }
+    sentencia = "buscar_empresa_id";
+    params = { id_empresa: id };
+    cache = "cache_buscar_empresa_id_" + id;
+  } else if (email) {
+    sentencia = "buscar_empresa_email";
+    params = { email: email };
+    cache = "cache_buscar_empresa_email_" + email.toLowerCase();
+  } else if (telefono) {
+    sentencia = "buscar_empresa_telefono";
+    params = { telefono: telefono };
+    cache = "cache_buscar_empresa_telefono_" + telefono;
+  } else if (nombre) {
+    sentencia = "buscar_empresa_nombre";
+    params = { nombre: terminoLike(nombre) };
+    cache = "cache_buscar_empresa_nombre_" + nombre.toLowerCase();
+  } else {
+    return [];
+  }
+  const data_cache = await $.getFromCache(cache);
+  if (data_cache !== null) {
+    return data_cache;
+  }
+  let conn = null;
+  try {
+    console.log("traer conexion");
+    conn = await objGestorBd.getPool_bases();
+    let SQL = objGestorSQL.getSqlNombre("integrador_tienddi", sentencia);
+    const rows = await conn.query2(SQL, params);
+    await $.storeInCache(cache, rows, 3 * 60 * 60);
+    return rows;
+  } catch (err) {
+    console.log("error:" + err);
+    throw err;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      conn.end(); //cerrar conexion y regresarlo
+    }
+  }
+};
 
 /*************  ✨ Codeium Command ⭐  *************/
 /**
@@ -1393,6 +1455,17 @@ $.getConfigurations = async (data) => {
     throw error;
   } finally {
   }
+};
+
+$.get_token_api_get = async (id_company) => {
+  let cache = "cache_token_api" + id_company;
+  let data_cache = await $.getFromCache(cache);
+  if (data_cache !== null) {
+    return data_cache;
+  }
+  let api = await $.get_token_api(id_company);
+  await $.storeInCache(cache, api, (ttlInSeconds = 1000 * 24 * 60 * 60));
+  return api;
 };
 $.getTokenEfimero = async (id_company) => {
   try {
