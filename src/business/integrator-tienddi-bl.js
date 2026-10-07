@@ -3476,5 +3476,29 @@ $.insert_cola_empresa = async (id_empresa, evento) => {
     }
   }
 };
+
+$.get_conf_modulos_sucursal_obtenerVariable = async (
+  id_company,
+  id_sucursal,
+  variable,
+  defecto,
+) => {
+  let valor = defecto;
+  let conf_modulos = await $.get_conf_modulos_sucursal(id_company, id_sucursal);
+  if (conf_modulos !== null && conf_modulos !== undefined) {
+    try {
+      conf_modulos = JSON.parse(conf_modulos);
+      if (
+        conf_modulos[variable] !== undefined &&
+        conf_modulos[variable] !== null
+      ) {
+        valor = conf_modulos[variable];
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  return { type: 1, valor: valor };
+};
 // Exportamos
 module.exports = $;

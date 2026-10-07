@@ -1004,5 +1004,36 @@ router.get(
     }
   },
 );
+
+router.get(
+  "/get_conf_modulos_sucursal_obtenerVariable/:id_empresa/:id_sucursal/:variable/:defecto",
+  queue_express({
+    activeLimit: 2,
+    queuedLimit: 20,
+    rejectHandler: (req, res) => {
+      // res.sendStatus(500);
+      res.status(500);
+      res.json({
+        status: 500,
+        error: "Intente más tarde cola de procesamiento muy llena test",
+      });
+    },
+  }),
+  async function (req, res) {
+    try {
+      let r =
+        await objIntegratorTienddiBl.get_conf_modulos_sucursal_obtenerVariable(
+          req.params.id_empresa,
+          req.params.id_sucursal,
+          req.params.variable,
+          req.params.defecto,
+        );
+      res.json(r);
+    } catch (e) {
+      fileManager.managerErrorApi(res, e);
+    }
+  },
+);
+
 // Exportamos las funciones en un objeto
 module.exports = router;
