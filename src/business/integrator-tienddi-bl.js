@@ -1848,6 +1848,61 @@ $.get_conf_modulos_sucursal = async (id_company, id_sucursal) => {
     return data_cache;
   }
 };
+$.get_id_sucursal_documento = async (
+  id_company,
+  id_documento,
+  tipo_documento,
+) => {
+  const tipoDocumento = String(tipo_documento);
+  let SQL;
+  let parametros;
+
+  if (["1", "9", "7"].includes(tipoDocumento)) {
+    SQL =
+      "SELECT id_sucursal FROM transacion_encabezado WHERE id_transacion=:id_transacion;";
+    parametros = { id_transacion: id_documento };
+  } else if (["5", "4", "8"].includes(tipoDocumento)) {
+    SQL =
+      "SELECT id_sucursal FROM vent_documento WHERE id_documento=:id_documento;";
+    parametros = { id_documento: id_documento };
+  } else {
+    return 0;
+  }
+
+  const cache =
+    "cache_id_sucursal_documento_" +
+    id_company +
+    "_" +
+    tipoDocumento +
+    "_" +
+    id_documento;
+  const data_cache = await $.getFromCache(cache);
+  if (data_cache !== null) {
+    return data_cache;
+  }
+
+  let conn = null;
+  try {
+    conn = await objGestorBd.getConnectionEmpresa(id_company);
+    const rows = await conn.query2(SQL, parametros);
+    const id_sucursal =
+      rows.length > 0 &&
+      rows[0].id_sucursal !== null &&
+      rows[0].id_sucursal !== undefined
+        ? rows[0].id_sucursal
+        : 0;
+    await $.storeInCache(cache, id_sucursal, 60 * 60);
+    return id_sucursal;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      conn.release();
+    }
+  }
+};
 $.get_conf_modulos_sucursal_generarQr_url_dian = async (
   id_company,
   id_sucursal,

@@ -1006,6 +1006,34 @@ router.get(
 );
 
 router.get(
+  "/get_id_sucursal_documento/:id_empresa/:id_documento/:tipo_documento",
+  queue_express({
+    activeLimit: 2,
+    queuedLimit: 20,
+    rejectHandler: (req, res) => {
+      // res.sendStatus(500);
+      res.status(500);
+      res.json({
+        status: 500,
+        error: "Intente más tarde cola de procesamiento muy llena test",
+      });
+    },
+  }),
+  async function (req, res) {
+    try {
+      let r = await objIntegratorTienddiBl.get_id_sucursal_documento(
+        req.params.id_empresa,
+        req.params.id_documento,
+        req.params.tipo_documento,
+      );
+      res.json(r);
+    } catch (e) {
+      fileManager.managerErrorApi(res, e);
+    }
+  },
+);
+
+router.get(
   "/get_conf_modulos_sucursal_obtenerVariable/:id_empresa/:id_sucursal/:variable/:defecto",
   queue_express({
     activeLimit: 2,
