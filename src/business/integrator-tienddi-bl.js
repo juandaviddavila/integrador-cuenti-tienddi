@@ -93,7 +93,7 @@ $.get_imagen_base64 = async function (url) {
     // Handle Error Here
     console.error(err);
     try {
-    } catch (error) {}
+    } catch (error) { }
     throw err;
   }
 };
@@ -441,7 +441,7 @@ $.generate_product = async function (
       //agregar impuesto ya que precio_venta_online es con impuestos incluidos
       row.precio_venta_online ==
         row.precio_venta_online +
-          row.precio_venta_online * (row.valor_impuesto / 100);
+        row.precio_venta_online * (row.valor_impuesto / 100);
     }
   }
   //al precio  row.precio_venta_online quitarle la parte que es de impuestos
@@ -1887,8 +1887,8 @@ $.get_id_sucursal_documento = async (
     const rows = await conn.query2(SQL, parametros);
     const id_sucursal =
       rows.length > 0 &&
-      rows[0].id_sucursal !== null &&
-      rows[0].id_sucursal !== undefined
+        rows[0].id_sucursal !== null &&
+        rows[0].id_sucursal !== undefined
         ? rows[0].id_sucursal
         : 0;
     await $.storeInCache(cache, id_sucursal, 60 * 60);
@@ -3555,5 +3555,35 @@ $.get_conf_modulos_sucursal_obtenerVariable = async (
   }
   return { type: 1, valor: valor };
 };
+
+$.insert_empresa_conector_aplicacion = async (id_empresa, aplicacion) => {
+  let conn = null;
+  try {
+    console.log("traer conexion");
+    conn = await objGestorBd.getPool_bases();
+    const SQL = `
+        INSERT IGNORE INTO j4pro_base.empresa_conector_aplicacion (id_empresa, fecha_registro, aplicacion)
+VALUES (:id_empresa, NOW(), :aplicacion);
+      `;
+    const result = await conn.query2(SQL, {
+      id_empresa: id_empresa,
+      aplicacion: aplicacion,
+    });
+    if (result.affectedRows === 0) {
+      return { type: 1 }; // ya existía
+    }
+    return { type: 1 }; // insertó
+  } catch (err) {
+    console.log("error:" + err);
+    throw err;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      conn.end();
+    }
+  }
+};
+
+
 // Exportamos
 module.exports = $;
