@@ -1090,5 +1090,89 @@ router.get(
 );
 
 
+const LISTA_IDENTIFICACIONES = [
+  { "id_tipo_identificacion": 1, "nombre": "Registro civil", "codigo": "11", "es_activo": 1, "abreviatura": "RC", "pais": "general" },
+  { "id_tipo_identificacion": 2, "nombre": "Tarjeta de identidad", "codigo": "12", "es_activo": 1, "abreviatura": "TI", "pais": "Colombia" },
+  { "id_tipo_identificacion": 3, "nombre": "Cedula de ciudadania", "codigo": "13", "es_activo": 1, "abreviatura": "CC", "pais": "general" },
+  { "id_tipo_identificacion": 4, "nombre": "Tarjeta de extranjeria", "codigo": "21", "es_activo": 1, "abreviatura": "TE", "pais": "Colombia" },
+  { "id_tipo_identificacion": 5, "nombre": "Cedula de extranjeria", "codigo": "22", "es_activo": 1, "abreviatura": "CE", "pais": "general" },
+  { "id_tipo_identificacion": 6, "nombre": "NIT", "codigo": "31", "es_activo": 1, "abreviatura": "NIT", "pais": "general" },
+  { "id_tipo_identificacion": 7, "nombre": "Pasaporte", "codigo": "41", "es_activo": 1, "abreviatura": "PASAPORTE", "pais": "general" },
+  { "id_tipo_identificacion": 8, "nombre": "Documento de identificacion extranjero", "codigo": "42", "es_activo": 1, "abreviatura": "Identificacion", "pais": "general" },
+  { "id_tipo_identificacion": 9, "nombre": "Otro", "codigo": "91", "es_activo": 1, "abreviatura": "Identificacion", "pais": "general" },
+  { "id_tipo_identificacion": 10, "nombre": "RTN", "codigo": "92", "es_activo": 1, "abreviatura": "RTN", "pais": "Honduras" },
+  { "id_tipo_identificacion": 11, "nombre": "RUC", "codigo": "93", "es_activo": 1, "abreviatura": "RUC", "pais": "Peru" },
+  { "id_tipo_identificacion": 12, "nombre": "DNI", "codigo": "94", "es_activo": 1, "abreviatura": "DNI", "pais": "Peru" },
+  { "id_tipo_identificacion": 13, "nombre": "Identificacion", "codigo": "95", "es_activo": 1, "abreviatura": "Identificacion", "pais": "general" },
+  { "id_tipo_identificacion": 14, "nombre": "RNC", "codigo": "96", "es_activo": 1, "abreviatura": "RNC", "pais": "Dominican Republic" },
+  { "id_tipo_identificacion": 15, "nombre": "Cédula Física", "codigo": "01", "es_activo": 1, "abreviatura": "CF", "pais": "Costa Rica" },
+  { "id_tipo_identificacion": 16, "nombre": "Cédula Jurídica", "codigo": "02", "es_activo": 1, "abreviatura": "CJ", "pais": "Costa Rica" },
+  { "id_tipo_identificacion": 17, "nombre": "DIMEX", "codigo": "03", "es_activo": 1, "abreviatura": "DIMEX", "pais": "Costa Rica" },
+  { "id_tipo_identificacion": 18, "nombre": "NITE", "codigo": "04", "es_activo": 1, "abreviatura": "NITE", "pais": "Costa Rica" },
+  { "id_tipo_identificacion": 19, "nombre": "Cédula", "codigo": "01", "es_activo": 1, "abreviatura": "CC", "pais": "Panama" },
+  { "id_tipo_identificacion": 20, "nombre": "RUC", "codigo": "02", "es_activo": 1, "abreviatura": "RUC", "pais": "Panama" },
+  { "id_tipo_identificacion": 21, "nombre": "RUC(Gobierno)", "codigo": "03", "es_activo": 1, "abreviatura": "RUCG", "pais": "Panama" }
+];
+
+const normalizarPais = (v) => String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
+router.get("/lista_indetificaciones", async function (req, res) {
+  try {
+    const pais = normalizarPais(req.query.pais);
+    const r = pais
+      ? LISTA_IDENTIFICACIONES.filter((t) => normalizarPais(t.pais) === "general" || normalizarPais(t.pais) === pais)
+      : LISTA_IDENTIFICACIONES;
+    res.json(r);
+  } catch (e) {
+    fileManager.managerErrorApi(res, e);
+  }
+});
+
+
+const API_CUENTI = "https://api.cuenti.co/jServerj4ErpPro/j4pro";
+const S3_BASE = "https://s3-us-west-2.amazonaws.com/documentosj4";
+
+router.get("/imagen_empresa/:idEmpresa/:idSucursal", async function (req, res) {
+  try {
+    const { idEmpresa, idSucursal } = req.params;
+    const cacheName = `cache_imagen_empresa_${idEmpresa}_${idSucursal}`;
+    const cachedResponse = await objIntegratorTienddiBl.getFromCache(cacheName);
+
+    if (cachedResponse !== null) {
+      return res.json(cachedResponse);
+    }
+
+    const tokenEmpresa = req.header("x-auth-token-empresa") || idEmpresa;
+
+    const resp = await fetch(
+      `${API_CUENTI}/admin/empresa/consultarEmpresaImagen/${encodeURIComponent(idEmpresa)}/${encodeURIComponent(idSucursal)}`,
+      { headers: { "X-Auth-Token-empresa": tokenEmpresa } }
+    );
+    if (!resp.ok) {
+      const response = { url: null, error: "No se pudo consultar la imagen" };
+      await objIntegratorTienddiBl.storeInCache(cacheName, response, 60 * 30);
+      return res.status(resp.status).json(response);
+    }
+
+    const data = await resp.json();
+    const message = (data && data.message) || "";
+
+    // Formato esperado: "<idEmpresa>_<idSucursal>;<extension>"  ->  "1_1;jpeg"
+    const [nombre, extension] = message.split(";");
+    if (!nombre || !extension) {
+      const response = { url: null };
+      await objIntegratorTienddiBl.storeInCache(cacheName, response, 60 * 30);
+      return res.json(response);
+    }
+
+    const url = `${S3_BASE}/${encodeURIComponent(idEmpresa)}/imagenes_empresa/${nombre}.${extension}`;
+    const response = { url, nombre, extension };
+    await objIntegratorTienddiBl.storeInCache(cacheName, response, 60 * 30);
+    res.json(response);
+  } catch (e) {
+    fileManager.managerErrorApi(res, e);
+  }
+});
+
 // Exportamos las funciones en un objeto
 module.exports = router;
