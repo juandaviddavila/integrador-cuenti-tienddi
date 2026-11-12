@@ -29,6 +29,52 @@ router.post("/get_url_store_cuenti", async function (req, res) {
   }
 });
 
+router.post(
+  "/consultar_Producto_movil/:clave",
+  queue_express({
+    activeLimit: 2,
+    queuedLimit: 20,
+    rejectHandler: (req, res) => {
+      res.status(500);
+      res.json({
+        status: 500,
+        error: "Intente más tarde cola de procesamiento muy llena test",
+      });
+    },
+  }),
+  async function (req, res) {
+    try {
+      if (
+        req.params.clave !==
+        "jdoaosdoieokoi4oi4o34o234sd485484DWjhhcv5897444343434==="
+      ) {
+        return res.json({
+          type: 0,
+          message: "clave mala",
+        });
+      }
+
+      const data = {
+        ...req.body,
+        id_empresa:
+          req.headers["x-auth-token-empresa"] ||
+          req.headers["id-company"] ||
+          req.body.id_empresa,
+      };
+      const id_empleado =
+        req.headers["x-id-empleado"] || req.body.id_empleado;
+
+      let r = await objIntegratorTienddiBl.consultar_Producto_movil(
+        data,
+        id_empleado,
+      );
+      res.json(r);
+    } catch (e) {
+      fileManager.managerErrorApi(res, e);
+    }
+  },
+);
+
 function diferenciaMayorASeisMeses(fecha1, fecha2) {
   // Convertir las cadenas de fecha en objetos Date
   const fechaInicio = new Date(fecha1);

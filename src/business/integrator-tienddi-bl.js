@@ -1552,6 +1552,57 @@ $.findActiveEvents = async (id_company, branchId, slug) => {
   } finally {
   }
 };
+$.consultar_Producto_movil = async (data, id_empleado) => {
+  try {
+    const requestData = {
+      id_sucursal: data.id_sucursal,
+      tomar_precio_online: data.tomar_precio_online,
+      codigo: data.codigo,
+      type_match_producto: data.type_match_producto,
+    };
+    const cacheParams = JSON.stringify({
+      id_empresa: data.id_empresa,
+      id_empleado,
+      ...requestData,
+    });
+    const cache =
+      "cache_consultar_producto_movil_" +
+      crypto.createHash("sha256").update(cacheParams).digest("hex");
+    const data_cache = await $.getFromCache(cache);
+    if (data_cache !== null) {
+      return data_cache;
+    }
+
+    const token = await $.getTokenEfimero(data.id_empresa);
+    let url = "http://balancer-1.interna.cuenti.com/jServerj4ErpPro/";
+    if (process.env.environment_data_base === "dev") {
+      url = "http://localhost:8084/jServerj4ErpPro/";
+    }
+
+    const resp = await axios({
+      method: "post",
+      timeout: 1000 * 10,
+      url:
+        url +
+        "com/j4ErpPro/server/inv/producto/consultar_Producto_movil",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "x-auth-token-empresa": data.id_empresa,
+        "x-gtm": "GMT-0500",
+        "x-id-empleado": id_empleado,
+        Authorization: "Bearer " + token,
+      },
+      data: requestData,
+    });
+
+    await $.storeInCache(cache, resp.data, 3 * 60 * 60);
+    return resp.data;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
 $.checkPayment = async (codigo, id_empresa, id_sucursal) => {
   try {
     let token = await $.getTokenEfimero(id_empresa);

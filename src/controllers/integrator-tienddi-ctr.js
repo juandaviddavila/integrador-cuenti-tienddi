@@ -17,6 +17,35 @@ router.post("/get_data_products", async function (req, res) {
     fileManager.managerErrorApi(res, e);
   }
 });
+router.post(
+  "/consultar_Producto_movil",
+  queue_express({
+    activeLimit: 2,
+    queuedLimit: 20,
+    rejectHandler: (req, res) => {
+      res.status(500);
+      res.json({
+        status: 500,
+        error: "Intente más tarde cola de procesamiento muy llena test",
+      });
+    },
+  }),
+  async function (req, res) {
+    try {
+      const data = {
+        ...req.body,
+        id_empresa: req.headers["id-company"],
+      };
+      let r = await objIntegratorTienddiBl.consultar_Producto_movil(
+        data,
+        req.headers["x-id-empleado"],
+      );
+      res.json(r);
+    } catch (e) {
+      fileManager.managerErrorApi(res, e);
+    }
+  },
+);
 router.post("/get_imagen_base64", async function (req, res) {
   try {
     let r = await objIntegratorTienddiBl.get_imagen_base64(req.body.url);
