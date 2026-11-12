@@ -1500,7 +1500,41 @@ $.getTokenEfimero = async (id_company) => {
   } finally {
   }
 };
-
+$.getTokenEfimero2 = async (id_company) => {
+  try {
+    let cache = "cache_token_efimero2" + id_company;
+    let data_cache = await $.getFromCache(cache);
+    if (data_cache !== null) {
+      console.log("token desde cache:" + data_cache);
+      return data_cache;
+    }
+    let api = await $.get_token_api(id_company);
+    var config = {
+      method: "post",
+      timeout: 1000 * 4, // Wait for 5 seconds
+      url: process.env.url_generate_token + "/generate_token2",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      data: {
+        pass: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5OTM5LTIwMjIwMjE2MDAwNzAzYTQ0YWFiLTZiMzktNDk3MC1hZTQ0LTZjOThkYmIzN2QxZSIsImlhdCI6MTY2MTUzMzY2NiwiZXhwIjpudWxsfQ.FiWeGRxbGC0h2PkS5eUcmxoPib0xpVR-IHEWw5-1Rms",
+        user: "cuenti",
+        token: api,
+        identification_number: "1",
+        id_empresa: id_company,
+      },
+    };
+    const resp = await axios(config);
+    await $.storeInCache(cache, resp.data.token, (ttlInSeconds = 60 * 60 * 24)); //guardar por 1 dia
+    console.log("token :" + JSON.stringify(resp.data));
+    return resp.data.token;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  } finally {
+  }
+};
 $.findActiveEvents = async (id_company, branchId, slug) => {
   try {
     let token = await $.getTokenEfimero(id_company);
@@ -1568,12 +1602,12 @@ $.consultar_Producto_movil = async (data, id_empleado) => {
     const cache =
       "cache_consultar_producto_movil_" +
       crypto.createHash("sha256").update(cacheParams).digest("hex");
-    const data_cache = await $.getFromCache(cache);
+    let data_cache = await $.getFromCache(cache);
     if (data_cache !== null) {
       return data_cache;
     }
 
-    const token = await $.getTokenEfimero(data.id_empresa);
+    const token = await $.getTokenEfimero2(data.id_empresa);
     let url = "http://balancer-1.interna.cuenti.com/jServerj4ErpPro/";
     if (process.env.environment_data_base === "dev") {
       url = "http://localhost:8084/jServerj4ErpPro/";
@@ -1582,15 +1616,12 @@ $.consultar_Producto_movil = async (data, id_empleado) => {
     const resp = await axios({
       method: "post",
       timeout: 1000 * 10,
-      url:
-        url +
-        "com/j4ErpPro/server/inv/producto/consultar_Producto_movil",
+      url: url + "com/j4ErpPro/server/inv/producto/consultar_Producto_movil",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
         "x-auth-token-empresa": data.id_empresa,
         "x-gtm": "GMT-0500",
-        "x-id-empleado": id_empleado,
         Authorization: "Bearer " + token,
       },
       data: requestData,
