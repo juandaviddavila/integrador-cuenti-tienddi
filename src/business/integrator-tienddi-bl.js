@@ -93,7 +93,7 @@ $.get_imagen_base64 = async function (url) {
     // Handle Error Here
     console.error(err);
     try {
-    } catch (error) { }
+    } catch (error) {}
     throw err;
   }
 };
@@ -441,7 +441,7 @@ $.generate_product = async function (
       //agregar impuesto ya que precio_venta_online es con impuestos incluidos
       row.precio_venta_online ==
         row.precio_venta_online +
-        row.precio_venta_online * (row.valor_impuesto / 100);
+          row.precio_venta_online * (row.valor_impuesto / 100);
     }
   }
   //al precio  row.precio_venta_online quitarle la parte que es de impuestos
@@ -1887,8 +1887,8 @@ $.get_id_sucursal_documento = async (
     const rows = await conn.query2(SQL, parametros);
     const id_sucursal =
       rows.length > 0 &&
-        rows[0].id_sucursal !== null &&
-        rows[0].id_sucursal !== undefined
+      rows[0].id_sucursal !== null &&
+      rows[0].id_sucursal !== undefined
         ? rows[0].id_sucursal
         : 0;
     await $.storeInCache(cache, id_sucursal, 60 * 60);
@@ -3584,6 +3584,28 @@ VALUES (:id_empresa, NOW(), :aplicacion);
   }
 };
 
+$.actualizarPedidoVictor = async (id_company, id_transacion, id_documento) => {
+  let conn = null;
+  let r = null;
+  try {
+    conn = await objGestorBd.getConnectionEmpresa(id_company);
+    let SQL = `UPDATE vent_documento SET esFacturado=1,es_activo=0,id_transacion=:id_transacion WHERE id_documento=:id_documento;`;
+    r = await conn.query2(SQL, {
+      id_transacion: id_transacion,
+      id_documento: id_documento,
+    });
+    return r;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  } finally {
+    if (conn !== null) {
+      console.log("cierre conexion " + conn.threadId);
+      // conn.end();
+      conn.release(); //release to pool
+    }
+  }
+};
 
 // Exportamos
 module.exports = $;

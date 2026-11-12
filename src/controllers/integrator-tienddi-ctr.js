@@ -197,5 +197,33 @@ router.get(
   },
 );
 
+router.post(
+  "/actualizarPedidoVictor",
+  queue_express({
+    activeLimit: 1,
+    queuedLimit: 5,
+    rejectHandler: (req, res) => {
+      // res.sendStatus(500);
+      res.status(500);
+      res.json({
+        status: 500,
+        error: "Intente más tarde cola de procesamiento muy llena test",
+      });
+    },
+  }),
+  async function (req, res) {
+    try {
+      let r = await objIntegratorTienddiBl.actualizarPedidoVictor(
+        req.headers["id-company"],
+        req.body.id_transacion,
+        req.body.id_documento,
+      );
+      res.json(r);
+    } catch (e) {
+      fileManager.managerErrorApi(res, e);
+    }
+  },
+);
+
 // Exportamos las funciones en un objeto
 module.exports = router;
